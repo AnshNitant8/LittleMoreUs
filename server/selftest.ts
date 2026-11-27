@@ -5,7 +5,8 @@
 
 import type { Result } from '../src/domain/types'
 import type { Gateway } from './gateway'
-import { handleRpc, type Caller } from './rpc'
+import { createGeminiClient } from '../src/services/gemini'
+import { handleRpc, type Caller, type RpcDeps } from './rpc'
 
 export interface Check {
   feature: string
@@ -18,8 +19,8 @@ const ALL = ['remember_us', 'our_journey', 'little_appreciations', 'what_we_need
 class Person {
   pending: string | null = null
   readonly caller: Caller | null
-  readonly deps: { gateway: Gateway; adminEmails: string[] }
-  constructor(caller: Caller | null, deps: { gateway: Gateway; adminEmails: string[] }) {
+  readonly deps: RpcDeps
+  constructor(caller: Caller | null, deps: RpcDeps) {
     this.caller = caller
     this.deps = deps
   }
@@ -37,7 +38,20 @@ class Person {
 
 export const SELFTEST_PREFIX = 'selftest-'
 
-export async function runSelftest(deps: { gateway: Gateway; adminEmails: string[] }): Promise<{ ok: boolean; run: string; checks: Check[] }> {
+/**
+ * `ai: 'first'` (default) uses live Gemini only for the first story and the
+ * Gemini check; the other steps use the backup library so the whole run fits
+ * in one minute. `ai: 'all'` uses Gemini everywhere.
+ */
+export async function runSelftest(base: { gateway: Gateway; adminEmails: string[] }, opts: { ai?: 'first' | 'all' } = {}): Promise<{ ok: boolean; run: string; checks: Check[] }> {
+  const offline = createGeminiClient(undefined)
+  let live = true
+  const deps: RpcDeps = {
+    ...base,
+    get ai() {
+      return live || opts.ai === 'all' ? undefined : offline
+    },
+  }
   const run = Date.now().toString(36)
   const email = (who: string) => `${SELFTEST_PREFIX}${who}-${run}@example.invalid`
   const person = (who: string) => new Person({ auth_id: `${SELFTEST_PREFIX}${who}-${run}`, email: email(who) }, deps)
@@ -142,6 +156,7 @@ export async function runSelftest(deps: { gateway: Gateway; adminEmails: string[
       expect(t.ok, `Gemini call failed after ${t.ms} ms: ${t.reason}`)
       return `${t.model} in ${t.ms} ms${t.passed_checks === false ? ', but the story failed the checks' : ''}`
     })
+    live = false
 
     await step('Story: save, react, Storybook list', async () => {
       await a.call('saveStory', { story_id: storyId, idempotencyKey: k() })

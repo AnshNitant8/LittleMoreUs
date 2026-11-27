@@ -3,7 +3,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import * as api from '../src/services/api.local'
-import { setAiClient, createGeminiClient } from '../src/services/gemini'
+import { setAiClient, createGeminiClient, probeGemini } from '../src/services/gemini'
 import type { Gateway } from './gateway'
 import { handleRpc, withDb, type Caller, type RpcRequest } from './rpc'
 import { buildDb, diffDb } from './scope'
@@ -50,11 +50,12 @@ export function createHandler(cfg: ServerConfig) {
     const url = new URL(req.url ?? '/', 'http://local')
     try {
       if (url.pathname === '/api/cron') return await cron(req, res, cfg)
-      if (url.pathname === '/api/health') return await health(res, cfg)
+      if (url.pathname === '/api/health') return await health(res, cfg, url.searchParams.get('gemini') === '1')
       if (url.pathname === '/api/selftest') {
         // Off unless SELFTEST_TOKEN is set; the token must match exactly.
         if (!cfg.selftestToken || url.searchParams.get('token') !== cfg.selftestToken) return send(res, 404, { error: 'not_found' })
-        return send(res, 200, await runSelftest({ gateway: cfg.gateway, adminEmails: cfg.adminEmails }))
+        const ai = url.searchParams.get('ai') === 'all' ? 'all' : 'first'
+        return send(res, 200, await runSelftest({ gateway: cfg.gateway, adminEmails: cfg.adminEmails }, { ai }))
       }
       if (url.pathname !== '/api/rpc') return send(res, 404, { error: 'not_found' })
       if (req.method !== 'POST') return send(res, 405, { error: 'method_not_allowed' })
@@ -77,7 +78,7 @@ export function createHandler(cfg: ServerConfig) {
 }
 
 /** Public status check: settings present and database reachable. Never values. */
-async function health(res: ServerResponse, cfg: ServerConfig) {
+async function health(res: ServerResponse, cfg: ServerConfig, gemini = false) {
   let database = 'ok'
   try {
     await cfg.gateway.accountExists('health-check@invalid')
@@ -91,6 +92,9 @@ async function health(res: ServerResponse, cfg: ServerConfig) {
     gemini_key: !!cfg.geminiKey,
     admin_set: cfg.adminEmails.length > 0,
     build: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
+    region: process.env.VERCEL_REGION ?? null,
+    // ?gemini=1: one live call to each model, with its time and error.
+    ...(gemini ? { gemini: await probeGemini(cfg.geminiKey) } : {}),
   })
 }
 

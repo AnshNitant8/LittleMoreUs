@@ -8,6 +8,7 @@ import * as api from '../src/services/api.local'
 import { newUserRecord, normaliseIdentifier } from '../src/services/auth'
 import { activeSession, setDeferHook, track } from '../src/services/core'
 import { readDb, setStoreContextResolver, transact, type Db, type StoreContext } from '../src/services/storage'
+import { setAiClientResolver, type AiClient } from '../src/services/gemini'
 import { ConflictError, type Gateway } from './gateway'
 import { buildDb, diffDb } from './scope'
 
@@ -33,15 +34,19 @@ export interface RpcResponse {
 export interface RpcDeps {
   gateway: Gateway
   adminEmails: string[]
+  /** Only for the dry run: an AI client for this call instead of the shared one. */
+  ai?: AiClient
 }
 
 interface Ctx extends StoreContext {
   deferred: Promise<unknown>[]
+  ai?: AiClient
 }
 
 const als = new AsyncLocalStorage<Ctx>()
 setStoreContextResolver(() => als.getStore())
 setDeferHook((p) => als.getStore()?.deferred.push(p))
+setAiClientResolver(() => als.getStore()?.ai)
 
 /** public: anyone; signed-in: a verified email, profile or not; user: has a profile; admin: ADMIN_EMAILS. */
 /** Run service code against `db` (the cron job uses this too). */
@@ -120,7 +125,7 @@ export async function handleRpc(req: RpcRequest, caller: Caller | null, deps: Rp
     if (access === 'admin') rows.me = findMe(rows, caller!.auth_id)
     const { db, snapshot } = buildDb(rows, pendingInvite)
     if (access === 'user' && !rows.me) return fail(401, 'Please sign in to continue.')
-    const ctx: Ctx = { db, deferred: [] }
+    const ctx: Ctx = { db, deferred: [], ai: deps.ai }
 
     const run = await als.run(ctx, async () => {
       // Time-based rules (expiry, reminders, erasure) settle before anything is read.

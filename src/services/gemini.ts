@@ -183,8 +183,40 @@ export function createGeminiClient(apiKey: string | undefined): AiClient {
 
 let client: AiClient = createGeminiClient(viteEnv.VITE_GEMINI_API_KEY)
 
+let resolveClient: (() => AiClient | undefined) | null = null
+
+/** Server: lets one request (the dry run) use its own client without touching others. */
+export function setAiClientResolver(fn: () => AiClient | undefined) {
+  resolveClient = fn
+}
+
 export function getAiClient(): AiClient {
-  return client
+  return resolveClient?.() ?? client
+}
+
+export interface ModelProbe {
+  model: string
+  ok: boolean
+  ms: number
+  error?: string
+}
+
+/** One plain call to each model at once, no retries: shows which ones answer right now. */
+export async function probeGemini(apiKey: string | undefined): Promise<ModelProbe[]> {
+  if (!apiKey) return [{ model: '-', ok: false, ms: 0, error: 'no_api_key' }]
+  const ai = new GoogleGenAI({ apiKey })
+  return Promise.all(
+    MODELS.map(async (model) => {
+      const t = Date.now()
+      try {
+        await withTimeout(ai.models.generateContent({ model, contents: 'Reply with the word ok.' }), 15_000)
+        return { model, ok: true, ms: Date.now() - t }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        return { model, ok: false, ms: Date.now() - t, error: msg.replace(/AIza[\w-]+|AQ\.[\w-]+/g, '[key]').slice(0, 300) }
+      }
+    }),
+  )
 }
 
 /** Tests and a future server-backed client can replace the default. */
