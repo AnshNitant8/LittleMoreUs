@@ -22,6 +22,7 @@ import { OnboardingFlow } from '../screens/onboarding/OnboardingFlow'
 import { AcceptInviteScreen } from '../screens/pairing/AcceptInviteScreen'
 import { InvitePartnerScreen } from '../screens/pairing/InvitePartnerScreen'
 import { RouterProvider, useRouter } from './router'
+import { UnlockScreen } from '../screens/storybook/UnlockScreen'
 
 function Shell() {
   const { state } = useService(getPrototypeState)
@@ -62,6 +63,10 @@ function SlotView() {
       <OnboardingFlow user={user} step={onboarding_step} paired={!!couple} householdAgeBand={couple?.age_band ?? null} />
     )
 
+  // Storybook full-screen views. Membership and locks are enforced by the service layer.
+  if (route.name === 'story' && route.param) return <StoryScreen key={route.param} storyId={route.param} />
+  if (route.name === 'unlock') return <UnlockScreen key={route.param ?? 'unlock'} lockedStory={!!route.param} />
+
   // Full-screen moment flows (no bottom nav: one primary action per screen).
   if (couple && route.param) {
     if (route.name === 'ask') {
@@ -70,7 +75,6 @@ function SlotView() {
     }
     if (route.name === 'answer') return <AnswerScreen key={route.param} interactionId={route.param} />
     if (route.name === 'waiting') return <WaitingScreen key={route.param} interactionId={route.param} />
-    if (route.name === 'story') return <StoryScreen key={route.param} storyId={route.param} />
   }
 
   let screen

@@ -1,10 +1,127 @@
-import { ComingLater, Screen } from '../components/ui'
+import { useState } from 'react'
+import { useRouter } from '../app/router'
+import { FieldError } from '../components/Onboarding'
+import { EmptyState, ErrorState, LoadingState, Screen } from '../components/ui'
+import { CATEGORIES } from '../domain/constants'
+import { useAction } from '../hooks/useAction'
+import { useService } from '../hooks/useService'
+import { deleteStory, listStories, requestExport, type StoryCard } from '../services/api'
+import { formatDate } from '../utils/time'
 
+/** Screen 14: saved timeline, Recent, locked previews, unlock, export and delete. */
 export function StorybookScreen() {
+  const { navigate } = useRouter()
+  const { state, reload } = useService(listStories)
+  const exp = useAction('export', (key) => requestExport({ idempotencyKey: key }))
+  const [exported, setExported] = useState(false)
+
+  const download = async () => {
+    const r = await exp.run()
+    if (!r?.ok) return
+    const url = URL.createObjectURL(new Blob([r.data.json], { type: 'application/json' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = r.data.filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    setExported(true)
+  }
+
   return (
     <Screen title="Storybook">
       <p className="text-ink-soft">Your private, shared collection of little stories.</p>
-      <ComingLater what="Saved and recent stories" stage={6} />
+      {state.status === 'loading' && <LoadingState />}
+      {state.status === 'error' && <ErrorState message={state.error.message} onRetry={reload} />}
+      {state.status === 'ready' && (
+        <>
+          <section aria-labelledby="saved-title" className="space-y-3">
+            <h2 id="saved-title" className="text-lg font-extrabold">Saved stories</h2>
+            {state.data.saved.length === 0 ? (
+              <EmptyState>Stories you save will gather here, newest first.</EmptyState>
+            ) : (
+              <ol className="space-y-3">
+                {state.data.saved.map((s) => <StoryRow key={s.story_id} story={s} />)}
+              </ol>
+            )}
+          </section>
+
+          <section aria-labelledby="recent-title" className="space-y-3">
+            <h2 id="recent-title" className="text-lg font-extrabold">Recent</h2>
+            <p className="text-sm text-ink-soft">Stories you haven't saved stay here for {state.data.recent_days} days.</p>
+            {state.data.recent.length === 0 ? (
+              <EmptyState>No unsaved stories right now.</EmptyState>
+            ) : (
+              <ul className="space-y-3">
+                {state.data.recent.map((s) => <StoryRow key={s.story_id} story={s} />)}
+              </ul>
+            )}
+          </section>
+
+          <section aria-labelledby="more-title" className="space-y-3">
+            <h2 id="more-title" className="sr-only">Storybook options</h2>
+            {state.data.unlocked ? (
+              <p className="card text-center font-bold">Your full Storybook is unlocked</p>
+            ) : (
+              <>
+                <p className="text-sm text-ink-soft">
+                  Stories from the last {state.data.free_window_days} days are free to read. Older ones are kept safe and never deleted.
+                </p>
+                <button type="button" className="btn-secondary" onClick={() => navigate('unlock')}>Unlock full Storybook</button>
+              </>
+            )}
+            <button type="button" className="btn-ghost w-full" disabled={exp.busy} onClick={download}>
+              {exp.busy ? 'Preparing…' : 'Export my stories (free)'}
+            </button>
+            {exported && <p role="status" className="text-center text-sm text-ink-soft">Your export has downloaded. It has your profile and stories, never your answers.</p>}
+            <FieldError id="export-error" message={exp.error?.message} />
+          </section>
+        </>
+      )}
     </Screen>
+  )
+}
+
+function StoryRow({ story }: { story: StoryCard }) {
+  const { navigate } = useRouter()
+  const [confirming, setConfirming] = useState(false)
+  const del = useAction('delete-story', (key) => deleteStory({ story_id: story.story_id, idempotencyKey: key }))
+  const c = CATEGORIES[story.category]
+  return (
+    <li className="rounded-[var(--radius-card)] p-4" style={{ background: c.accent }}>
+      <button
+        type="button"
+        className="block w-full min-h-11 text-left"
+        onClick={() => navigate(story.locked ? 'unlock' : 'story', story.story_id)}
+        aria-label={story.locked ? `${story.title}, locked. Unlock to read` : `Read ${story.title}`}
+      >
+        <span className="block font-extrabold">{story.title}</span>
+        {story.locked ? (
+          <span className="mt-1 flex items-center gap-2 text-sm text-ink-soft">
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+            Locked · tap to unlock
+          </span>
+        ) : (
+          <span className="mt-1 block text-ink">{story.preview}</span>
+        )}
+        {story.removed_at && <span className="mt-1 block text-xs text-ink-soft">Leaves Recent on {formatDate(story.removed_at)} unless saved</span>}
+      </button>
+      {confirming ? (
+        <div className="mt-3 space-y-2 rounded-2xl bg-white p-3" role="group" aria-label="Confirm delete">
+          <p className="text-sm font-bold">Delete this story for both of you? It will be removed from both your Storybooks and can't be undone.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className="btn-primary" disabled={del.busy} onClick={() => del.run()}>Delete for both</button>
+            <button type="button" className="btn-secondary" onClick={() => setConfirming(false)}>Keep it</button>
+          </div>
+          <FieldError id={`del-${story.story_id}`} message={del.error?.message} />
+        </div>
+      ) : (
+        <button type="button" className="btn-ghost -ml-4 mt-1 text-sm" onClick={() => setConfirming(true)}>Delete</button>
+      )}
+    </li>
   )
 }

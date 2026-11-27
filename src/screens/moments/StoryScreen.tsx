@@ -8,6 +8,7 @@ import { useAction } from '../../hooks/useAction'
 import { useService } from '../../hooks/useService'
 import { REACTIONS, getStory, reactToStory, regenerateStory, reportStory, saveStory, type StoryView } from '../../services/api'
 import { formatDate } from '../../utils/time'
+import { UnlockScreen } from '../storybook/UnlockScreen'
 
 const REACTION_NAMES: Record<ReactionValue, string> = { '❤️': 'Love', '😂': 'Laugh', '🥹': 'Touched', '🌟': 'Star' }
 const REASONS: { value: ReportReason; label: string }[] = [
@@ -23,6 +24,7 @@ export function StoryScreen({ storyId }: { storyId: string }) {
   const [reported, setReported] = useState(false)
   if (reported) return <ReportedScreen />
   if (state.status === 'loading') return <div className="px-4"><LoadingState label="Writing your story" /></div>
+  if (state.status === 'error' && state.error.locked) return <UnlockScreen lockedStory />
   if (state.status === 'error') return <div className="px-4 pt-10"><ErrorState message={state.error.message} onRetry={reload} /></div>
   return <StoryBody key={state.data.story_id} story={state.data} onReported={() => setReported(true)} />
 }

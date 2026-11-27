@@ -194,7 +194,7 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     stage: 5,
     topic: 'Support region',
-    text: 'India contacts are shown when the sign-in identifier is a +91 number or the device time zone is Asia/Kolkata. Everyone else sees the general wording. Verify all numbers before launch.',
+    text: 'India contacts are shown when the sign-in identifier is a +91 number or the device time zone is Asia/Kolkata. Everyone else sees the general wording. The helpline numbers still need checking before launch (see Support numbers).',
   },
   {
     stage: 5,
@@ -210,5 +210,30 @@ export const ASSUMPTIONS: Assumption[] = [
     stage: 5,
     topic: 'Dismiss and Done',
     text: 'Dismiss and Done both return Home and leave the story unsaved, so it stays in recent stories but not in the Storybook.',
+  },
+  {
+    stage: 6,
+    topic: 'Free window',
+    text: 'A story is free to read for free_window_days (30 by default, 5 in Prototype Controls) from the day it was written. After that it shows as a locked preview with only its category and date, and is never deleted.',
+  },
+  {
+    stage: 6,
+    topic: 'Who an unlock covers',
+    text: "The purchaser can read every story they can see, in any couple. Their partner can read the couple's older stories only while paired with the purchaser. After a disconnect, the other partner goes back to the free window.",
+  },
+  {
+    stage: 6,
+    topic: 'Payment reference',
+    text: 'The QR image is a decorative placeholder and encodes nothing. A reference must be 6 to 30 letters, numbers or hyphens. Only one payment can be pending at a time, and a rejected payment can be tried again. The reference never goes to analytics.',
+  },
+  {
+    stage: 6,
+    topic: 'Export',
+    text: 'Export is free once per day (in the couple time zone). The JSON holds your profile, your couple settings, and every story you can see, including the text of locked ones, plus the question and your own reaction. It never holds raw answers or your partner\'s reactions.',
+  },
+  {
+    stage: 6,
+    topic: 'Deleting a story',
+    text: 'Either partner can delete any story they can see, saved, recent or locked. It is removed for both straight away, with its reactions, after a confirmation that says so.',
   },
 ]

@@ -338,6 +338,8 @@ export interface ApiError {
   message: string
   /** On a duplicate-question conflict, the existing open interaction. */
   interaction_id?: string
+  /** On a story outside the free window without an unlock: show the paywall. */
+  locked?: boolean
 }
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: ApiError }

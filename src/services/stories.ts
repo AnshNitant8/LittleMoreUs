@@ -10,6 +10,7 @@ import { ALL_QUESTIONS } from '../data/questions'
 import { newId } from '../utils/id'
 import { DURATION, nowIso, nowMs } from './clock'
 import { cachedResult, fail, mutate, query, requireUser, track } from './core'
+import { storyLocked } from './entitlement'
 import { getAiClient, type StoryRequest } from './gemini'
 import { notify } from './notify'
 import { readDb } from './storage'
@@ -174,13 +175,20 @@ export async function resumeGeneration(): Promise<number> {
 
 // ---------- Story access ----------
 
-function requireVisibleStory(db: Db, storyId: string, userId: string): Story {
+export function requireVisibleStory(db: Db, storyId: string, userId: string): Story {
   const s = db.stories.find((x) => x.story_id === storyId)
   if (!s) return fail(404, "We couldn't find this story.")
   const couple = db.couples.find((c) => c.couple_id === s.couple_id)
   // Stories are visible only to the two members of the couple.
   if (!couple || !couple.member_user_ids.includes(userId)) return fail(403, "This story isn't yours to view.")
   if (s.quarantined || s.hidden_for_user_ids.includes(userId)) return fail(404, "This story isn't available.")
+  return s
+}
+
+/** Visible and not locked: outside the free window without an unlock, only the paywall shows. */
+function requireReadableStory(db: Db, storyId: string, userId: string): Story {
+  const s = requireVisibleStory(db, storyId, userId)
+  if (storyLocked(db, s, userId)) fail(403, 'This story is in your locked Storybook.', { locked: true })
   return s
 }
 
@@ -214,14 +222,14 @@ function storyView(db: Db, s: Story, userId: string): StoryView {
 export async function getStory(storyId: string): Promise<Result<StoryView>> {
   return query((db) => {
     const me = requireUser(db)
-    return storyView(db, requireVisibleStory(db, storyId, me.user_id), me.user_id)
+    return storyView(db, requireReadableStory(db, storyId, me.user_id), me.user_id)
   })
 }
 
 export async function saveStory(input: { story_id: string; idempotencyKey: string }): Promise<Result<StoryView>> {
   return mutate(input.idempotencyKey, (db) => {
     const me = requireUser(db)
-    const s = requireVisibleStory(db, input.story_id, me.user_id)
+    const s = requireReadableStory(db, input.story_id, me.user_id)
     s.saved = true
     track(db, 'story_saved', { story_id: s.story_id, category: s.category })
     return storyView(db, s, me.user_id)
@@ -231,7 +239,7 @@ export async function saveStory(input: { story_id: string; idempotencyKey: strin
 export async function reactToStory(input: { story_id: string; value: ReactionValue; idempotencyKey: string }): Promise<Result<StoryView>> {
   return mutate(input.idempotencyKey, (db) => {
     const me = requireUser(db)
-    const s = requireVisibleStory(db, input.story_id, me.user_id)
+    const s = requireReadableStory(db, input.story_id, me.user_id)
     if (!REACTIONS.includes(input.value)) fail(400, 'Please choose one of the reactions.')
     const existing = db.reactions.find((r) => r.story_id === s.story_id && r.user_id === me.user_id)
     if (existing) {
@@ -247,7 +255,7 @@ export async function reactToStory(input: { story_id: string; value: ReactionVal
 export async function reportStory(input: { story_id: string; reason: ReportReason; idempotencyKey: string }): Promise<Result<true>> {
   return mutate(input.idempotencyKey, (db) => {
     const me = requireUser(db)
-    const s = requireVisibleStory(db, input.story_id, me.user_id)
+    const s = requireReadableStory(db, input.story_id, me.user_id)
     if (!['inaccurate', 'uncomfortable', 'other'].includes(input.reason)) fail(400, 'Please choose a reason.')
     const report: Report = {
       report_id: newId('rpt'),
@@ -281,7 +289,7 @@ export async function regenerateStory(input: { story_id: string; idempotencyKey:
   if (cached) return cached
   const check = await query((db) => {
     const me = requireUser(db)
-    const s = requireVisibleStory(db, input.story_id, me.user_id)
+    const s = requireReadableStory(db, input.story_id, me.user_id)
     if (!storyView(db, s, me.user_id).can_regenerate) fail(409, 'This story can only be rewritten once, within a day of being made.')
     const p = prepare(db, s.interaction_id, { allowCompleted: true })
     if (!p) fail(410, "This story can't be rewritten any more.")
@@ -291,7 +299,7 @@ export async function regenerateStory(input: { story_id: string; idempotencyKey:
   const composed = await composeStory(check.data.p, check.data.interactionId)
   return mutate(input.idempotencyKey, (db) => {
     const me = requireUser(db)
-    const old = requireVisibleStory(db, input.story_id, me.user_id)
+    const old = requireReadableStory(db, input.story_id, me.user_id)
     if (old.regenerate_used) fail(409, 'This story can only be rewritten once.')
     const i = db.interactions.find((x) => x.interaction_id === old.interaction_id)!
     const fresh = newStory(i, old.story_intent, composed, old.story_id)

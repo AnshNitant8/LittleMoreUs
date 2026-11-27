@@ -10,7 +10,9 @@ import {
   listNotifications,
   markNotificationsRead,
   resetAllPrototypeData,
+  adminListPayments,
   adminListReports,
+  adminVerifyPayment,
   adminReviewReport,
   idemKey,
   setSimulatedOffline,
@@ -360,9 +362,7 @@ function AdminPanel() {
   return (
     <>
       <Section title="Verify payment queue">
-        <p className="rounded-md border border-dashed border-slate-500 p-3 text-slate-300">
-          Unavailable in this build yet. Arrives with the Storybook and payments stage.
-        </p>
+        <PaymentQueue />
       </Section>
       <Section title="Review reports (story, intent and question only)">
         {state.status === 'ready' && state.data.length === 0 && <p className="text-slate-400">No reports.</p>}
@@ -393,6 +393,36 @@ function AdminPanel() {
         )}
       </Section>
     </>
+  )
+}
+
+function PaymentQueue() {
+  const { state } = useService(adminListPayments)
+  if (state.status !== 'ready') return null
+  if (state.data.length === 0) return <p className="text-slate-400">No payments submitted.</p>
+  return (
+    <ul className="space-y-2">
+      {state.data.map((p) => (
+        <li key={p.entitlement_id} className="space-y-2 rounded-md bg-slate-800 p-3">
+          <p className="text-[11px] text-slate-400">{formatDateTime(p.purchased_at)} · INR 299</p>
+          <p className="font-sans">
+            {p.purchaser} · ref <span className="font-mono">{p.payment_reference}</span>
+          </p>
+          {p.status === 'pending' ? (
+            <div className="flex gap-2">
+              <button type="button" className={protoBtn} onClick={() => adminVerifyPayment({ entitlement_id: p.entitlement_id, decision: 'approve', idempotencyKey: idemKey('verify') })}>
+                Approve
+              </button>
+              <button type="button" className={protoBtn} onClick={() => adminVerifyPayment({ entitlement_id: p.entitlement_id, decision: 'reject', idempotencyKey: idemKey('verify') })}>
+                Reject
+              </button>
+            </div>
+          ) : (
+            <p className="text-proto-accent">{p.status === 'active' ? 'Approved: Storybook unlocked' : p.status === 'rejected' ? 'Rejected: stays locked' : p.status}</p>
+          )}
+        </li>
+      ))}
+    </ul>
   )
 }
 

@@ -117,3 +117,7 @@ export const DISTRESS_FLAG_RETENTION_DAYS = 30
 export const ACCOUNT_RECOVERY_DAYS = 7
 export const REGENERATE_WINDOW_HOURS = 24
 export const TIMEZONE_CHANGE_COOLDOWN_HOURS = 24
+
+// ---------- Storybook unlock (spec Sections 4, 10) ----------
+export const STORYBOOK_PRODUCT_ID = 'storybook_unlock' as const
+export const STORYBOOK_PRICE_LABEL = 'INR 299'

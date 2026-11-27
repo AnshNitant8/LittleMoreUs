@@ -108,3 +108,20 @@ Built in seven reviewable stages (spec Section 1). A stage is ticked only after
   React, Save, Report and "Thanks for telling us" work; B's distress answer
   shows the private support card, A sees nothing and the answer text is not
   in storage; analytics contain no answer text. No horizontal scroll.
+
+## Stage 6 checks
+- Type check: pass. Build: pass. Tests: 98/98 pass (9 new: saved timeline
+  with category-plus-date titles and Recent; unsaved stories removed after
+  5 days, saved kept; locked previews hide text, the service refuses locked
+  reads, locked stories never deleted; delete by either partner removes for
+  both; pending purchase stays locked, Approve unlocks for both partners,
+  partner sees "Already unlocked"; Reject stays locked and allows a retry;
+  reference validation, kept out of analytics; entitlement stays with the
+  purchaser after a disconnect; export has no raw answers, once per day).
+- Browser (Chromium, 390×844): save a story → Storybook timeline; free window
+  set to 5 days and clock +5 days → locked preview without story text; tap →
+  paywall with QR placeholder → reference → "We're checking your payment";
+  Admin Approve → unlocked; partner A reads the story and sees "Already
+  unlocked"; export downloads JSON with no raw answers, second export the
+  same day refused; delete confirmation → removed for both partners.
+  Analytics contain no answer text or payment reference. No horizontal scroll.
