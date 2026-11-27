@@ -101,7 +101,7 @@ export function PrototypeControls() {
                 </button>
               ))}
             </div>
-            <div className="flex-1 overflow-y-auto px-4 pb-8" role="tabpanel" aria-label={TAB_LABELS[tab]}>
+            <div tabIndex={0} className="flex-1 overflow-y-auto px-4 pb-8" role="tabpanel" aria-label={TAB_LABELS[tab]}>
               {state.status === 'loading' && <p>Loading…</p>}
               {state.status === 'error' && <p role="alert">Could not load prototype state: {state.error.message}</p>}
               {state.status === 'ready' && (

@@ -64,6 +64,7 @@ export type NotificationType =
   | 'partner_invitation'
   | 'pending_reminder'
   | 'story_ready'
+  | 'game_ready'
   | 'pairing_status'
   | 'household_notice'
 
@@ -107,6 +108,8 @@ export interface User {
   notification_prefs: NotificationPrefs
   is_18_confirmed: boolean
   deletion_requested_at: ISODate | null
+  /** Set at deletion: also delete the couple's shared stories for both when the account is erased. */
+  delete_shared_stories?: boolean
   created_at: ISODate
   /** Which onboarding steps are complete (prototype bookkeeping). */
   onboarding_complete: boolean

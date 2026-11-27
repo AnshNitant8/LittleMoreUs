@@ -6,6 +6,7 @@ import { CATEGORIES } from '../domain/constants'
 import { useAction } from '../hooks/useAction'
 import { useService } from '../hooks/useService'
 import { deleteStory, listStories, requestExport, type StoryCard } from '../services/api'
+import { downloadText } from '../utils/download'
 import { formatDate } from '../utils/time'
 
 /** Screen 14: saved timeline, Recent, locked previews, unlock, export and delete. */
@@ -18,14 +19,7 @@ export function StorybookScreen() {
   const download = async () => {
     const r = await exp.run()
     if (!r?.ok) return
-    const url = URL.createObjectURL(new Blob([r.data.json], { type: 'application/json' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = r.data.filename
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    downloadText(r.data.filename, r.data.json)
     setExported(true)
   }
 

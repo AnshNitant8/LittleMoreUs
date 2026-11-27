@@ -9,6 +9,7 @@ import { useAction } from '../../hooks/useAction'
 import { useService } from '../../hooks/useService'
 import { getInteraction, withdrawInteraction, type InteractionView } from '../../services/api'
 import { formatDateTime } from '../../utils/time'
+import { GameStatus } from './GameScreen'
 
 const COPY: Record<InteractionStatus, { title: string; body: string }> = {
   awaiting_partner: { title: 'Your little moment is on its way!', body: 'Your partner can answer whenever suits them.' },
@@ -28,6 +29,7 @@ export function WaitingScreen({ interactionId }: { interactionId: string }) {
   if (state.status === 'loading') return <div className="px-4"><LoadingState /></div>
   if (state.status === 'error') return <div className="px-4 pt-10"><ErrorState message={state.error.message} onRetry={reload} /></div>
   const i = state.data
+  if (i.type === 'game') return <GameStatus interaction={i} />
   const copy = i.show_support ? { title: 'Thank you for sharing', body: '' } : COPY[i.status]
   return (
     <main aria-labelledby="waiting-title" className="flex min-h-dvh flex-col px-4 pt-6">

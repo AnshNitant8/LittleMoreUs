@@ -236,4 +236,29 @@ export const ASSUMPTIONS: Assumption[] = [
     topic: 'Deleting a story',
     text: 'Either partner can delete any story they can see, saved, recent or locked. It is removed for both straight away, with its reactions, after a confirmation that says so.',
   },
+  {
+    stage: 7,
+    topic: 'Guess My Answer',
+    text: 'Found under Explore. The person who starts picks the option they would choose, and the partner guesses from the same options. Both tick that their pick will be revealed. Once both have picked, both see the two options with a playful line ("Great minds!" or "Ooh, a little surprise!"). No score, no story, no free text. Picks are deleted a day after the reveal. A game counts as a new moment for the daily cap; a guess does not.',
+  },
+  {
+    stage: 7,
+    topic: 'Pause and snooze',
+    text: 'Pause and snooze only stop app suggestions. Moments your partner starts still appear on Home and still notify you, following your notification settings. A snooze ends by itself after 3 or 7 days.',
+  },
+  {
+    stage: 7,
+    topic: 'Disconnect',
+    text: 'Either partner can disconnect. Open moments close (closed_disconnected) and their answers are deleted. Saved stories stay for both until either deletes one. The other partner gets a neutral in-app notice. Both can pair again with a new invite.',
+  },
+  {
+    stage: 7,
+    topic: 'Account deletion',
+    text: 'Deleting an account deletes that person\'s answers at once, ends any pairing and signs them out. Signing in within 7 days offers "Keep my account". After 7 days the account is erased. If "Also delete our shared stories for both of us" was ticked, the couple\'s stories are removed at erasure, so they come back if the account is kept.',
+  },
+  {
+    stage: 7,
+    topic: 'Category names in notifications',
+    text: 'The spec copy "A little [Category] moment" would read "A little Little Appreciations moment", so for that category it reads "A Little Appreciations moment".',
+  },
 ]

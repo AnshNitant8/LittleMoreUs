@@ -125,3 +125,44 @@ Built in seven reviewable stages (spec Section 1). A stage is ticked only after
   unlocked"; export downloads JSON with no raw answers, second export the
   same day refused; delete confirmation → removed for both partners.
   Analytics contain no answer text or payment reference. No horizontal scroll.
+
+## Stage 7 checks
+- Type check: pass. Build: pass. Lint: warnings only (fast-refresh export
+  style, one dependency-list note). Tests: 107/107 pass (9 new: game reveal
+  only after both respond, options only, acknowledgement required, free text
+  refused, counts toward the cap, flag off hides it; pause and snooze stop
+  suggestions; disconnect closes open moments, deletes their answers, keeps
+  saved stories for both, notifies the partner; account deletion deletes
+  answers at once, keeps shared stories by default, erases after 7 days,
+  removes shared stories only when ticked, can be cancelled by signing in;
+  the single reminder survives a +7 day clock jump).
+- Bug found by the browser run and fixed: a +7 day clock jump expired a moment
+  before its reminder was sent. Reminders now run before expiry.
+- Accessibility: axe-core (WCAG 2.0/2.1 A and AA) on 19 screens, zero
+  violations after making the Prototype Controls panel keyboard-scrollable.
+  No horizontal scroll at 390 px on any of them.
+
+## Acceptance checklist (Section 18), final browser run
+
+Chromium at 390×844, one continuous two-partner session, plus unit tests.
+The final run had no network route to Gemini, so stories came from the
+fallback library; the live Gemini story was checked in the Stage 5 run.
+
+| # | Item | Result | How |
+|---|------|--------|-----|
+| 1 | OTP sign-up, pairing, onboarding | Pass | Browser |
+| 2 | Unpaired: invite card and sample, no answering | Pass | Browser |
+| 3 | No interaction before submit; one generic notification | Pass | Browser (store) + unit |
+| 4 | Identical frozen wording; partner never sees raw text | Pass | Browser |
+| 5 | 2–4 sentence story with both labels; future_plan forward-looking | Pass | Stage 5 live Gemini run + unit (validator) |
+| 6 | Invalid AI output retries once, then fallback; moment completes | Pass | Unit + browser (fallback) |
+| 7 | Flagged answer: no story, support card only for that person, partner sees "This one didn't become a story", no text stored | Pass | Browser |
+| 8 | Decline, expiry (+7 days), withdrawal, one reminder, answer deletion on schedule | Pass | Browser + unit |
+| 9 | Cap: 4th refused, replies still allowed, skips don't count | Pass | Unit (Stage 4) |
+| 10 | Unsaved stories leave Recent after 5 days; old saved stories locked, never deleted; paywall only on locked or Unlock | Pass | Browser + unit |
+| 11 | QR paywall → pending; Approve unlocks for both; Reject stays locked | Pass | Browser (approve) + unit (reject) |
+| 12 | Disconnect keeps saved stories for both; delete says "for both" | Pass | Browser |
+| 13 | Account deletion: consequences, unticked shared-stories option, 7-day recovery | Pass | Browser + unit |
+| 14 | Export JSON has no raw answers | Pass | Browser + unit |
+| 15 | Guess My Answer reveals only options after both respond, no score, no free text | Pass | Browser + unit |
+| 16 | No streaks, scores or counters by default; Prototype Controls is the only dev tooling | Pass | Browser text check on Home, Explore, Storybook, Profile |

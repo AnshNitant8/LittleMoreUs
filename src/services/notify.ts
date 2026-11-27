@@ -16,7 +16,7 @@ const TOGGLE_FOR: Partial<Record<NotificationType, keyof User['notification_pref
 }
 
 /** Types that behave like push and so follow window and quiet hours. */
-const PUSH_TYPES: NotificationType[] = ['app_suggestion', 'partner_invitation', 'pending_reminder', 'story_ready']
+const PUSH_TYPES: NotificationType[] = ['app_suggestion', 'partner_invitation', 'pending_reminder', 'story_ready', 'game_ready']
 
 /** True if a push may be delivered to this user at this instant. */
 export function canDeliverAt(user: User, atMs: number, timeZone: string): boolean {

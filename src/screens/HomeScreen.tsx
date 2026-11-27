@@ -93,7 +93,7 @@ function PairedHome() {
   const { state, reload } = useService(getHome)
   if (state.status === 'loading') return <LoadingState />
   if (state.status === 'error') return <ErrorState message={state.error.message} onRetry={reload} />
-  const { featured, waiting_for_you, my_open, recent_stories, recent_closed } = state.data
+  const { featured, waiting_for_you, my_open, recent_stories, recent_closed, recent_games } = state.data
   return (
     <>
       {waiting_for_you.length > 0 && (
@@ -102,7 +102,7 @@ function PairedHome() {
           <ul className="space-y-3">
             {waiting_for_you.map((i) => (
               <li key={i.interaction_id}>
-                <MomentRow i={i} onOpen={() => navigate('answer', i.interaction_id)} note={`${i.initiator_label} started this`} />
+                <MomentRow i={i} onOpen={() => navigate('answer', i.interaction_id)} note={i.type === 'game' ? `${i.initiator_label} started a guessing game` : `${i.initiator_label} started this`} />
               </li>
             ))}
           </ul>
@@ -157,6 +157,19 @@ function PairedHome() {
                   onOpen={() => navigate('waiting', i.interaction_id)}
                   note={i.status === 'declined' ? 'Not this one' : i.status === 'expired' ? 'Closed' : "This one didn't become a story"}
                 />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {recent_games.length > 0 && (
+        <section aria-labelledby="games-title" className="space-y-3">
+          <h2 id="games-title" className="text-lg font-extrabold">Ready to reveal</h2>
+          <ul className="space-y-3">
+            {recent_games.map((i) => (
+              <li key={i.interaction_id}>
+                <MomentRow i={i} onOpen={() => navigate('waiting', i.interaction_id)} note="Guess My Answer" />
               </li>
             ))}
           </ul>

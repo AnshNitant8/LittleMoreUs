@@ -7,6 +7,7 @@ import { ErrorState, LoadingState } from '../../components/ui'
 import { useAction } from '../../hooks/useAction'
 import { useService } from '../../hooks/useService'
 import { useSubmitWithRetry } from '../../hooks/useSubmitWithRetry'
+import { GameGuess } from './GameScreen'
 import { declineInteraction, getInteraction, respondToInteraction, type InteractionView } from '../../services/api'
 
 /** Screen 11 for the second partner: the same frozen question; Answer, Skip or "Not this one". */
@@ -16,6 +17,7 @@ export function AnswerScreen({ interactionId }: { interactionId: string }) {
   if (state.status === 'error') return <div className="px-4 pt-10"><ErrorState message={state.error.message} onRetry={reload} /></div>
   const i = state.data
   if (i.role === 'initiator' || i.status !== 'awaiting_partner' || i.my_response) return <RedirectToWaiting id={i.interaction_id} />
+  if (i.type === 'game') return <GameGuess interaction={i} />
   return <AnswerForm interaction={i} />
 }
 

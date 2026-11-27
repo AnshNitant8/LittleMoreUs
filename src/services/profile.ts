@@ -1,7 +1,8 @@
 // Profile and preferences (spec Screens 03–05, 08 and Section 13 "Profile").
 // A user can only read and change their own record.
 
-import { PARENT_LABEL_MAX } from '../domain/constants'
+import { ACCOUNT_RECOVERY_DAYS, PARENT_LABEL_MAX } from '../domain/constants'
+import { DURATION, nowMs } from './clock'
 import {
   AGE_BANDS,
   CATEGORY_IDS,
@@ -21,6 +22,8 @@ export type OnboardingStep = 'stage' | 'family' | 'moments' | 'invite' | 'notifi
 
 export interface Session {
   user: User | null
+  /** When an account deletion is pending: the moment it becomes irreversible. */
+  erase_at: string | null
   onboarding_step: OnboardingStep | null
   couple: CoupleView | null
   /** Invite token opened on this device and not yet answered. */
@@ -44,6 +47,7 @@ export async function getSession(): Promise<Result<Session>> {
     const couple = u ? coupleViewFor(db, u.user_id) : null
     return {
       user: u ? structuredClone(u) : null,
+      erase_at: u?.deletion_requested_at ? new Date(Date.parse(u.deletion_requested_at) + ACCOUNT_RECOVERY_DAYS * DURATION.DAY).toISOString() : null,
       onboarding_step: u ? onboardingStep(u, !!couple) : null,
       couple,
       pending_invite: activeSession(db).pending_invite,
@@ -126,6 +130,10 @@ export interface UpdatePreferencesInput {
   depth?: Depth
   muted_categories?: CategoryId[]
   notification_prefs?: NotificationPrefs
+  /** Pause app suggestions until turned back on. */
+  paused?: boolean
+  /** Snooze app suggestions for 3 or 7 days; 0 ends a snooze. */
+  snooze_days?: 0 | 3 | 7
   idempotencyKey: string
 }
 
@@ -145,6 +153,11 @@ export async function updatePreferences(input: UpdatePreferencesInput): Promise<
     if (input.muted_categories !== undefined) {
       if (input.muted_categories.some((c) => !CATEGORY_IDS.includes(c))) fail(400, 'Unknown category.')
       u.preferences.muted_categories = [...new Set(input.muted_categories)]
+    }
+    if (input.paused !== undefined) u.preferences.paused = !!input.paused
+    if (input.snooze_days !== undefined) {
+      if (![0, 3, 7].includes(input.snooze_days)) fail(400, 'You can snooze for 3 or 7 days.')
+      u.preferences.snoozed_until = input.snooze_days ? new Date(nowMs() + input.snooze_days * DURATION.DAY).toISOString() : null
     }
     if (input.notification_prefs !== undefined) {
       const n = input.notification_prefs

@@ -394,7 +394,8 @@ describe('app suggestions', () => {
     await runScheduledJobs()
     const sug = readDb().notifications.filter((n) => n.type === 'app_suggestion')
     expect(sug.length).toBe(2) // one each
-    expect(sug[0].body).toMatch(/^A little .+ moment is here when you are\.$/)
+    expect(sug[0].body).toMatch(/^A (little )?.+ moment is here when you are\.$/)
+    expect(sug[0].body).not.toMatch(/little Little/i)
   })
 
   it('respects the app suggestions toggle', async () => {

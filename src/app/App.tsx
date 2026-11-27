@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BottomNav } from '../components/BottomNav'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { PrototypeControls } from '../components/PrototypeControls'
 import { Toaster } from '../components/Toaster'
 import { ErrorState, LoadingState } from '../components/ui'
@@ -22,6 +23,8 @@ import { OnboardingFlow } from '../screens/onboarding/OnboardingFlow'
 import { AcceptInviteScreen } from '../screens/pairing/AcceptInviteScreen'
 import { InvitePartnerScreen } from '../screens/pairing/InvitePartnerScreen'
 import { RouterProvider, useRouter } from './router'
+import { StartGameScreen } from '../screens/moments/GameScreen'
+import { DeleteAccountScreen, RecoverAccountScreen } from '../screens/account/AccountScreens'
 import { UnlockScreen } from '../screens/storybook/UnlockScreen'
 
 function Shell() {
@@ -33,7 +36,9 @@ function Shell() {
     <>
       {/* key forces a clean remount when the simulated device changes */}
       <div key={slot} className="mx-auto min-h-dvh max-w-[430px] bg-cream">
-        <SlotView />
+        <ErrorBoundary>
+          <SlotView />
+        </ErrorBoundary>
       </div>
       <Toaster userId={userId} />
       <PrototypeControls />
@@ -50,7 +55,8 @@ function SlotView() {
   if (state.status === 'loading') return <div className="px-4"><LoadingState /></div>
   if (state.status === 'error') return <div className="px-4 pt-10"><ErrorState message={state.error.message} onRetry={reload} /></div>
 
-  const { user, onboarding_step, couple, pending_invite } = state.data
+  const { user, onboarding_step, couple, pending_invite, erase_at } = state.data
+  if (user && erase_at) return <RecoverAccountScreen eraseAt={erase_at} />
   // Screen 07: an invite link, or an invite opened before signing in.
   if (route.name === 'invite' && route.param) return <AcceptInviteScreen key={route.param} token={route.param} signedIn={!!user} />
   if (user && pending_invite && !couple) return <AcceptInviteScreen key={pending_invite} token={pending_invite} signedIn />
@@ -63,6 +69,8 @@ function SlotView() {
       <OnboardingFlow user={user} step={onboarding_step} paired={!!couple} householdAgeBand={couple?.age_band ?? null} />
     )
 
+  if (route.name === 'delete-account') return <DeleteAccountScreen />
+
   // Storybook full-screen views. Membership and locks are enforced by the service layer.
   if (route.name === 'story' && route.param) return <StoryScreen key={route.param} storyId={route.param} />
   if (route.name === 'unlock') return <UnlockScreen key={route.param ?? 'unlock'} lockedStory={!!route.param} />
@@ -73,6 +81,7 @@ function SlotView() {
       const cat = CATEGORY_IDS.includes(route.param as CategoryId) ? (route.param as CategoryId) : null
       return <AskScreen key={route.param} category={cat} />
     }
+    if (route.name === 'play') return <StartGameScreen />
     if (route.name === 'answer') return <AnswerScreen key={route.param} interactionId={route.param} />
     if (route.name === 'waiting') return <WaitingScreen key={route.param} interactionId={route.param} />
   }

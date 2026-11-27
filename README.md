@@ -1,21 +1,72 @@
 # A Little More Us (prototype)
 
-Mobile-first, browser-only usability prototype. React + TypeScript + Tailwind,
-simulated backend in `localStorage`, optional Gemini via `@google/genai`.
+Mobile-first, browser-only usability prototype. Two partners each answer a
+private question, and the app turns both answers into a short story in the
+imagined voice of their baby. React + TypeScript + Tailwind, a simulated
+backend in `localStorage`, and Gemini through `@google/genai`.
+
+## Run it
 
 ```bash
 npm install
-cp .env.example .env.local   # optional: add VITE_GEMINI_API_KEY
-npm run dev                  # http://localhost:5173
-npm test                     # unit + component tests
+cp .env.example .env.local   # then set VITE_GEMINI_API_KEY (optional)
+npm run dev                  # http://localhost:5173 (best at phone width)
+npm test                     # 107 unit and component tests
 npm run typecheck && npm run build
 ```
 
+Without a Gemini key the app still works: every story comes from the
+ready-written fallback library, and the distress check uses the phrase list
+only.
+
 Open **Prototype Controls** with the yellow gear (top right) to switch between
-Partner A and Partner B, move the simulated clock, change flags and read the
-Assumptions page.
+Partner A and Partner B, move the simulated clock (+1 hour to +7 days), change
+feature flags, simulate offline, read the notification inbox and analytics log,
+approve payments, review reports, and read the Assumptions page.
 
-**Not production-secure.** localStorage is not a multi-user datastore, and a
-Gemini key in browser code is extractable. See the in-app Assumptions page.
+OTP code for every account: `123456`.
 
-Progress: see [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+## What was built
+
+All seven stages of the build spec:
+
+1. Foundation: service layer, storage, simulated clock, Prototype Controls.
+2. Onboarding and profiles, with an 18+ gate and OTP sign-in.
+3. Pairing by invite link, with the household stage and a shared timezone.
+4. Connection Moments: deterministic question selection, atomic creation, frozen
+   wording, decline, withdraw, expiry, one reminder, daily cap, offline retry.
+5. AI stories and safety: Gemini with validation, one retry, then the fallback
+   library; two-layer distress check with a private support card; reports and
+   rewrite.
+6. Storybook and payments: saved timeline, Recent, free window and locked
+   previews, prototype QR paywall with manual approval, export, delete for both.
+7. Guess My Answer, profile management, pause and snooze, disconnect, account
+   deletion with a 7-day recovery window, error boundary and accessibility pass.
+
+## Project structure
+
+```
+src/
+  app/          App shell, hash router, tabs
+  components/   Shared UI (Prototype Controls, cards, toasts, QR placeholder)
+  data/         Question library, fallback stories, sample moment, assumptions
+  domain/       Types, constants, pure rules (question selection, story validation)
+  hooks/        useService, useAction, useSubmitWithRetry
+  screens/      One folder per area: auth, onboarding, pairing, moments, storybook, account
+  services/     The service layer; the UI only calls src/services/api.ts
+    gemini.ts   The only module that talks to Gemini
+  utils/        Time, ids, download
+```
+
+## Not production-ready
+
+- `localStorage` is not a secure multi-user datastore. The Partner A / B switch
+  simulates two phones; it is not real account isolation.
+- The Gemini key is built into the browser bundle and can be extracted. Move both
+  AI calls behind a server before launch (only `gemini.ts` would change).
+- OTP, push notifications and payments are simulated. The QR image encodes nothing.
+- The distress phrase list and the helpline numbers must be clinically and
+  locally reviewed before launch.
+
+See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for what was tested at
+each stage and the acceptance checklist results.

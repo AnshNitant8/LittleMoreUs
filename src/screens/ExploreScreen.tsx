@@ -40,6 +40,21 @@ function PairedExplore() {
             onOpen={(c) => navigate('ask', c)}
             info={Object.fromEntries(state.data.categories.map((c) => [c.category, c]))}
           />
+          {state.data.game && (
+            <button
+              type="button"
+              onClick={() => navigate('play', 'new')}
+              className="flex w-full items-center gap-4 rounded-[var(--radius-card)] border-2 border-dashed border-line bg-white p-4 text-left"
+            >
+              <CategoryIllustration category="lets_play" />
+              <span className="flex-1">
+                <span className="block text-lg font-extrabold">Guess My Answer</span>
+                <span className="block text-sm text-ink-soft">
+                  {state.data.game.has_new ? 'Pick an option, your partner guesses, then you both see the two picks. Just for fun.' : "You've played every game for now"}
+                </span>
+              </span>
+            </button>
+          )}
         </>
       )}
     </Screen>
