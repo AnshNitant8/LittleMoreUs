@@ -131,7 +131,14 @@ export async function runSelftest(deps: { gateway: Gateway; adminEmails: string[
       storyText = sa.text
       const status = admin ? await admin.call<{ recent: { story_id: string; source: string; fallback_reason: string | null }[] }>('getAiStatus') : null
       const mine = status?.recent.find((r) => r.story_id === storyId)
-      return mine ? (mine.source === 'fallback' ? `fallback story (${mine.fallback_reason})` : `written by ${mine.source}`) : undefined
+      return mine ? (mine.fallback_reason ? `fallback story, reason: ${mine.fallback_reason}` : `written by ${mine.source}`) : undefined
+    })
+
+    await step('Gemini answers from the live server', async () => {
+      expect(admin, 'ADMIN_EMAILS is not set')
+      const t = await admin!.call<{ ok: boolean; model?: string; ms: number; reason?: string; passed_checks?: boolean }>('testGemini')
+      expect(t.ok, `Gemini call failed after ${t.ms} ms: ${t.reason}`)
+      return `${t.model} in ${t.ms} ms${t.passed_checks === false ? ', but the story failed the checks' : ''}`
     })
 
     await step('Story: save, react, Storybook list', async () => {
