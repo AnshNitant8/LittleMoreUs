@@ -136,7 +136,9 @@ export async function runSelftest(deps: { gateway: Gateway; adminEmails: string[
 
     await step('Gemini answers from the live server', async () => {
       expect(admin, 'ADMIN_EMAILS is not set')
-      const t = await admin!.call<{ ok: boolean; model?: string; ms: number; reason?: string; passed_checks?: boolean }>('testGemini')
+      // testGemini answers with its own shape, not the usual ok/data wrapper.
+      const t = (await admin!.try('testGemini')) as unknown as { ok: boolean; model?: string; ms: number; reason?: string; passed_checks?: boolean; error?: { message: string } }
+      expect(!t.error, `testGemini: ${t.error?.message}`)
       expect(t.ok, `Gemini call failed after ${t.ms} ms: ${t.reason}`)
       return `${t.model} in ${t.ms} ms${t.passed_checks === false ? ', but the story failed the checks' : ''}`
     })

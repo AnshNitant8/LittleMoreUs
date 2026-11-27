@@ -74,6 +74,7 @@ export const MODELS = [
 ].filter((m, i, all) => all.indexOf(m) === i)
 const STORY_TIMEOUT_MS = 10_000
 const CLASSIFY_TIMEOUT_MS = 6_000
+const BUSY = /"code":\s*(503|429)|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand|overloaded/i
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -101,13 +102,26 @@ export function createGeminiClient(apiKey: string | undefined): AiClient {
   }
   const ai = new GoogleGenAI({ apiKey })
 
-  async function firstModelThatAnswers<T>(run: (model: string) => Promise<T>, timeoutMs: number, models = MODELS): Promise<{ value: T; model: string }> {
+  /**
+   * Try each model in turn. A busy answer (503 or 429) is retried on the same
+   * model after a short pause, within `budgetMs` overall, so one crowded
+   * moment at Google does not send the couple a library story.
+   */
+  async function firstModelThatAnswers<T>(run: (model: string) => Promise<T>, timeoutMs: number, models = MODELS, budgetMs = timeoutMs * 2): Promise<{ value: T; model: string }> {
     let lastError: unknown = null
+    const deadline = Date.now() + budgetMs
     for (const model of models) {
-      try {
-        return { value: await withTimeout(run(model), timeoutMs), model }
-      } catch (e) {
-        lastError = e
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const left = deadline - Date.now()
+        if (left < 1_000) throw lastError ?? new Error('timeout')
+        try {
+          return { value: await withTimeout(run(model), Math.min(timeoutMs, left)), model }
+        } catch (e) {
+          lastError = e
+          const msg = e instanceof Error ? e.message : String(e)
+          if (!BUSY.test(msg)) break
+          await new Promise((r) => setTimeout(r, 800 * (attempt + 1)))
+        }
       }
     }
     throw lastError ?? new Error('no_model')
@@ -156,8 +170,9 @@ export function createGeminiClient(apiKey: string | undefined): AiClient {
             },
           }),
         CLASSIFY_TIMEOUT_MS,
-        // One model only: a slow classifier must not hold up sending an answer.
+        // One model, one short budget: a slow classifier must not hold up sending an answer.
         MODELS.slice(0, 1),
+        CLASSIFY_TIMEOUT_MS,
       )
       const parsed = JSON.parse(value.text ?? '') as { distress?: unknown }
       if (typeof parsed.distress !== 'boolean') throw new Error('bad_shape')
