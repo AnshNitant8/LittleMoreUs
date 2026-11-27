@@ -54,7 +54,8 @@ await build({
   banner: { js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);" },
   logLevel: 'warning',
 })
-const vc = { runtime: 'nodejs22.x', handler: 'index.mjs', launcherType: 'Nodejs', shouldAddHelpers: false, maxDuration: 60, regions: [env.FUNCTION_REGION || 'bom1'] }
+// Washington DC: Gemini's free tier refuses calls from Mumbai (bom1). Override with FUNCTION_REGION.
+const vc = { runtime: 'nodejs22.x', handler: 'index.mjs', launcherType: 'Nodejs', shouldAddHelpers: false, maxDuration: 60, regions: [env.FUNCTION_REGION || 'iad1'] }
 writeFileSync(`${fn}/.vc-config.json`, JSON.stringify(vc, null, 2))
 cpSync(fn, `${out}/functions/api/cron.func`, { recursive: true })
 cpSync(fn, `${out}/functions/api/health.func`, { recursive: true })
