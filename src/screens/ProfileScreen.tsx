@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useRouter } from '../app/router'
-import { FieldError } from '../components/Onboarding'
+import { FieldError, SelectAll } from '../components/Onboarding'
 import { ErrorState, LoadingState, Screen } from '../components/ui'
 import { AGE_BAND_LABELS, CATEGORIES, DEPTH_LABELS, PARENT_LABEL_PRESETS } from '../domain/constants'
 import { AGE_BANDS, CATEGORY_IDS, DEPTHS, type AgeBand, type CategoryId, type Depth, type Result, type User } from '../domain/types'
@@ -206,6 +206,7 @@ function MomentsForm({ user, onDone }: { user: User; onDone: () => void }) {
     <>
       <fieldset className="space-y-1">
         <legend className="font-bold">Kinds of moments you'd like</legend>
+        <SelectAll total={CATEGORY_IDS.length} selected={cats.length} onChange={(all) => setCats(all ? [...CATEGORY_IDS] : [])} />
         {CATEGORY_IDS.map((id) => (
           <label key={id} className="flex min-h-11 cursor-pointer items-center gap-3">
             <input type="checkbox" className="h-5 w-5 accent-coral" checked={cats.includes(id)} onChange={() => setCats(flip(cats, id))} />

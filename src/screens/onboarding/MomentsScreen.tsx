@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CategoryIllustration } from '../../components/Illustrations'
-import { ChoiceCard, FieldError, OnboardingLayout } from '../../components/Onboarding'
+import { ChoiceCard, FieldError, OnboardingLayout, SelectAll } from '../../components/Onboarding'
 import { CATEGORIES, CATEGORY_ORDER, DEPTH_LABELS } from '../../domain/constants'
 import { DEPTHS, type CategoryId, type Depth, type User } from '../../domain/types'
 import { useAction } from '../../hooks/useAction'
@@ -30,6 +30,7 @@ export function MomentsScreen({ user, step, total, onBack, onDone }: { user: Use
     >
       <fieldset className="space-y-3">
         <legend className="mb-1 font-bold">Kinds of moments</legend>
+        <SelectAll total={CATEGORY_ORDER.length} selected={cats.length} onChange={(all) => setCats(all ? [...CATEGORY_ORDER] : [])} />
         {CATEGORY_ORDER.map((c) => (
           <ChoiceCard
             key={c}

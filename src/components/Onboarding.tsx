@@ -96,3 +96,24 @@ export function ChoiceCard({
     </label>
   )
 }
+
+/** "Select all" for a multi-select list. Shows a mixed state when only some are chosen. */
+export function SelectAll({ total, selected, onChange, label = 'Select all' }: { total: number; selected: number; onChange: (all: boolean) => void; label?: string }) {
+  const all = selected === total
+  const some = selected > 0 && !all
+  return (
+    <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-2xl px-[18px]">
+      <span className="font-semibold">{label}</span>
+      <input
+        type="checkbox"
+        checked={all}
+        aria-checked={some ? 'mixed' : all}
+        ref={(el) => {
+          if (el) el.indeterminate = some
+        }}
+        onChange={() => onChange(!all)}
+        className="h-6 w-6 shrink-0 cursor-pointer accent-coral"
+      />
+    </label>
+  )
+}
