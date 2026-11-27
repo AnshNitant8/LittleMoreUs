@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useRouter } from '../../app/router'
-import { AnswerFields, canSubmitAnswer, useAnswerDraft } from '../../components/AnswerForm'
+import { AnswerFields, ConsentAndSend, useAnswerDraft } from '../../components/AnswerForm'
 import { FieldError } from '../../components/Onboarding'
 import { QuestionCard } from '../../components/QuestionCard'
 import { ErrorState, LoadingState } from '../../components/ui'
@@ -58,7 +58,7 @@ function AskForm({ question, onSkipped }: { question: MomentQuestionView; onSkip
       <button type="button" className="btn-ghost -ml-3 self-start no-underline" onClick={() => history.back()}>← Back</button>
       <div className="mt-2 flex-1 space-y-5 pb-6">
         <QuestionCard category={question.category} context={question.context} text={question.text} />
-        <AnswerFields text={draft.text} setText={draft.setText} consent={consent} setConsent={setConsent} disabled={sending} />
+        <AnswerFields text={draft.text} setText={draft.setText} disabled={sending} />
         {send.phase === 'sending' && (
           <p role="status" className="rounded-2xl bg-white p-3 text-sm">
             Sending… You seem to be offline. We'll keep trying, and your answer won't be sent twice.
@@ -72,19 +72,20 @@ function AskForm({ question, onSkipped }: { question: MomentQuestionView; onSkip
         )}
       </div>
       <div className="sticky bottom-0 -mx-4 space-y-2 bg-cream/95 px-4 pb-6 pt-3 backdrop-blur">
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={!canSubmitAnswer(draft.text, consent) || sending}
-          onClick={() =>
+        <ConsentAndSend
+          text={draft.text}
+          consent={consent}
+          setConsent={setConsent}
+          disabled={sending}
+          sending={sending}
+          label="Send my answer"
+          onSend={() =>
             send.submit((v) => {
               draft.clear()
               navigate('waiting', v.interaction_id)
             })
           }
-        >
-          {send.phase === 'sending' ? 'Sending…' : send.phase === 'busy' ? 'Sending…' : 'Send my answer'}
-        </button>
+        />
         <button
           type="button"
           className="btn-ghost w-full"

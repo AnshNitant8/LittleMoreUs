@@ -79,14 +79,15 @@ function GamePicker(props: {
             </label>
           ))}
         </fieldset>
-        <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-cream-deep p-4 text-sm">
-          <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-coral" checked={ack} onChange={(e) => setAck(e.target.checked)} />
-          <span>{REVEAL_NOTE} I'm happy for my pick to be shown.</span>
-        </label>
         <FieldError id="game-error" message={props.error} />
         {props.extra}
       </div>
-      <div className="sticky bottom-0 -mx-4 bg-cream/95 px-4 pb-6 pt-3 backdrop-blur">
+      <div className="sticky bottom-0 -mx-4 space-y-2 bg-cream/95 px-4 pb-6 pt-3 backdrop-blur">
+        {/* In the sticky bar so the required tick box is always visible next to the button. */}
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm">
+          <input type="checkbox" className="mt-0.5 h-6 w-6 shrink-0 accent-coral" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+          <span>{REVEAL_NOTE} I'm happy for my pick to be shown.</span>
+        </label>
         <button type="button" className="btn-primary" disabled={!choice || !ack || props.busy} onClick={() => choice && props.onSubmit(choice, ack)}>
           {props.busy ? 'Sending…' : props.submitLabel}
         </button>

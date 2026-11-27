@@ -42,14 +42,10 @@ export function useAnswerDraft(draftKey: string) {
 export function AnswerFields({
   text,
   setText,
-  consent,
-  setConsent,
   disabled,
 }: {
   text: string
   setText: (t: string) => void
-  consent: boolean
-  setConsent: (c: boolean) => void
   disabled?: boolean
 }) {
   const id = useId()
@@ -79,11 +75,53 @@ export function AnswerFields({
       <p id={`${id}-notice`} className="rounded-2xl bg-cream-deep p-4 text-sm">
         Your partner will receive this exact same question; both answers will be used to create a shared story only after you both agree.
       </p>
-      <label className="flex min-h-11 cursor-pointer items-start gap-3">
-        <input type="checkbox" checked={consent} disabled={disabled} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-6 w-6 shrink-0 accent-coral" />
+    </div>
+  )
+}
+
+/**
+ * Consent tick box plus the send button. Lives in the sticky action bar so it is
+ * always on screen next to the button; it was once hidden under the bar on tall screens.
+ */
+export function ConsentAndSend({
+  text,
+  consent,
+  setConsent,
+  disabled,
+  sending,
+  label,
+  onSend,
+}: {
+  text: string
+  consent: boolean
+  setConsent: (c: boolean) => void
+  disabled?: boolean
+  sending: boolean
+  label: string
+  onSend: () => void
+}) {
+  const id = useId()
+  const hasText = Array.from(text.trim()).length > 0
+  return (
+    <>
+      <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm">
+        <input
+          type="checkbox"
+          checked={consent}
+          disabled={disabled}
+          onChange={(e) => setConsent(e.target.checked)}
+          aria-describedby={`${id}-hint`}
+          className="mt-0.5 h-6 w-6 shrink-0 accent-coral"
+        />
         <span>I agree my answer can be used, together with my partner's, to create our shared story.</span>
       </label>
-    </div>
+      <button type="button" className="btn-primary" disabled={!canSubmitAnswer(text, consent) || disabled} onClick={onSend}>
+        {sending ? 'Sending…' : label}
+      </button>
+      <p id={`${id}-hint`} className="text-center text-xs text-ink-soft" aria-live="polite">
+        {!hasText ? 'Write a few words to send.' : !consent ? 'Tick the box above to send.' : ''}
+      </p>
+    </>
   )
 }
 

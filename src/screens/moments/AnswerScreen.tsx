@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from '../../app/router'
-import { AnswerFields, canSubmitAnswer, useAnswerDraft } from '../../components/AnswerForm'
+import { AnswerFields, ConsentAndSend, useAnswerDraft } from '../../components/AnswerForm'
 import { FieldError } from '../../components/Onboarding'
 import { QuestionCard } from '../../components/QuestionCard'
 import { ErrorState, LoadingState } from '../../components/ui'
@@ -44,7 +44,7 @@ function AnswerForm({ interaction }: { interaction: InteractionView }) {
       <div className="mt-2 flex-1 space-y-5 pb-6">
         <p className="text-ink-soft">{interaction.initiator_label} started this little moment for you both.</p>
         <QuestionCard category={interaction.category} context={interaction.context} text={interaction.question_text} />
-        <AnswerFields text={draft.text} setText={draft.setText} consent={consent} setConsent={setConsent} disabled={sending} />
+        <AnswerFields text={draft.text} setText={draft.setText} disabled={sending} />
         {send.phase === 'sending' && (
           <p role="status" className="rounded-2xl bg-white p-3 text-sm">
             Sending… You seem to be offline. We'll keep trying, and your answer won't be sent twice.
@@ -75,19 +75,20 @@ function AnswerForm({ interaction }: { interaction: InteractionView }) {
         )}
       </div>
       <div className="sticky bottom-0 -mx-4 space-y-2 bg-cream/95 px-4 pb-6 pt-3 backdrop-blur">
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={!canSubmitAnswer(draft.text, consent) || sending}
-          onClick={() =>
+        <ConsentAndSend
+          text={draft.text}
+          consent={consent}
+          setConsent={setConsent}
+          disabled={sending}
+          sending={sending}
+          label="Send my answer"
+          onSend={() =>
             send.submit(() => {
               draft.clear()
               navigate('waiting', interaction.interaction_id)
             })
           }
-        >
-          {sending ? 'Sending…' : 'Send my answer'}
-        </button>
+        />
         <div className="grid grid-cols-2 gap-2">
           <button type="button" className="btn-ghost" disabled={sending} onClick={() => navigate('home')}>Skip for now</button>
           <button type="button" className="btn-ghost" disabled={sending} onClick={() => setConfirmDecline(true)}>Not this one</button>
