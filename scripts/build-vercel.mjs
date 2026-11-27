@@ -57,6 +57,7 @@ await build({
 const vc = { runtime: 'nodejs22.x', handler: 'index.mjs', launcherType: 'Nodejs', shouldAddHelpers: false, maxDuration: 60, regions: [env.FUNCTION_REGION || 'bom1'] }
 writeFileSync(`${fn}/.vc-config.json`, JSON.stringify(vc, null, 2))
 cpSync(fn, `${out}/functions/api/cron.func`, { recursive: true })
+cpSync(fn, `${out}/functions/api/health.func`, { recursive: true })
 
 cpSync('dist', `${out}/static`, { recursive: true })
 writeFileSync(

@@ -48,6 +48,7 @@ export function createHandler(cfg: ServerConfig) {
     const url = new URL(req.url ?? '/', 'http://local')
     try {
       if (url.pathname === '/api/cron') return await cron(req, res, cfg)
+      if (url.pathname === '/api/health') return await health(res, cfg)
       if (url.pathname !== '/api/rpc') return send(res, 404, { error: 'not_found' })
       if (req.method !== 'POST') return send(res, 405, { error: 'method_not_allowed' })
       let body: RpcRequest
@@ -66,6 +67,24 @@ export function createHandler(cfg: ServerConfig) {
       send(res, 500, { result: { ok: false, error: { code: 500, message: 'Something went wrong. Please try again.' } }, client: { pending_invite: null } })
     }
   }
+}
+
+/** Public status check: settings present and database reachable. Never values. */
+async function health(res: ServerResponse, cfg: ServerConfig) {
+  let database = 'ok'
+  try {
+    await cfg.gateway.accountExists('health-check@invalid')
+  } catch (e) {
+    database = e instanceof Error && /app_account_exists|function/i.test(e.message) ? 'tables missing' : 'unreachable'
+  }
+  send(res, database === 'ok' ? 200 : 503, {
+    ok: database === 'ok',
+    mode: 'server',
+    database,
+    gemini_key: !!cfg.geminiKey,
+    admin_set: cfg.adminEmails.length > 0,
+    build: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
+  })
 }
 
 /** Daily clean-up across all couples: expiry, reminders, erasure, retention. */
