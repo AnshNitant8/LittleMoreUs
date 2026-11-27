@@ -59,4 +59,40 @@ export const ASSUMPTIONS: Assumption[] = [
     important: true,
     text: 'Verify all numbers before launch. (Tele-MANAS 14416, emergency services 112, Women Helpline 181.)',
   },
+  {
+    stage: 2,
+    topic: 'Prototype sign-in',
+    important: true,
+    text:
+      'Any valid phone number (10–15 digits, optional +) or email is accepted and the code is always 123456. No SMS or email is sent. Codes expire after 10 minutes, resend unlocks after 30 seconds, and 5 wrong codes lock that identifier for 15 minutes. A new code does not lift an active lockout.',
+  },
+  {
+    stage: 2,
+    topic: 'One person per simulated device',
+    text:
+      'The same account cannot be signed in as both Partner A and Partner B at once, because each slot stands for a different person.',
+  },
+  {
+    stage: 2,
+    topic: 'Display name and labels',
+    text:
+      'Display name is 1–40 characters. Parent labels are 1–20 user-perceived characters (grapheme clusters), so labels in any script are counted fairly. Extra spaces are collapsed.',
+  },
+  {
+    stage: 2,
+    topic: 'Default notification settings',
+    text:
+      'Defaults: notification window 09:00–21:00, quiet hours 22:00–07:00, all three toggles on. The window start and end must differ.',
+  },
+  {
+    stage: 2,
+    topic: 'Onboarding order',
+    text:
+      'Onboarding runs: parenthood stage, family profile, choose moments, notification preferences. The invite-partner step is added between moments and notifications with pairing (stage 3). Back lets people revisit earlier steps without losing what they entered.',
+  },
+  {
+    stage: 2,
+    topic: 'Terms and Privacy',
+    text: 'Terms and Privacy pages hold short prototype placeholder text, not legal documents.',
+  },
 ]

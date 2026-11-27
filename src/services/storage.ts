@@ -14,6 +14,7 @@ import type {
   FeatureFlags,
   Interaction,
   Invitation,
+  OtpChallenge,
   QuestionHistory,
   Reaction,
   Report,
@@ -51,6 +52,7 @@ export interface Db {
   /** Per-user, per-day skip counts: `${user_id}|${day}|${category}` → count */
   skip_counts: Record<string, number>
   export_log: Record<string, string> // user_id → last export local day
+  otp_challenges: Record<string, OtpChallenge>
 }
 
 export function emptySlot(): SlotSession {
@@ -80,6 +82,7 @@ export function createEmptyDb(): Db {
     idempotency: {},
     skip_counts: {},
     export_log: {},
+    otp_challenges: {},
   }
 }
 

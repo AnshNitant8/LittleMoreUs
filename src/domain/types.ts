@@ -303,18 +303,21 @@ export interface FeatureFlags {
 
 export type DeviceSlot = 'A' | 'B'
 
+/** OTP challenge state, per identifier (spec Screen 02). */
+export interface OtpChallenge {
+  identifier: string
+  issued_at: ISODate
+  expires_at: ISODate
+  last_sent_at: ISODate
+  failed_attempts: number
+  locked_until: ISODate | null
+}
+
 /** One simulated device per partner; each has its own session. */
 export interface SlotSession {
   user_id: UserId | null
-  /** Pending OTP challenge for this slot. */
-  otp: {
-    identifier: string
-    mode: 'signup' | 'login'
-    issued_at: ISODate
-    expires_at: ISODate
-    failed_attempts: number
-    locked_until: ISODate | null
-  } | null
+  /** Pending OTP request on this device (identifier awaiting a code). */
+  otp: { identifier: string; mode: 'signup' | 'login'; is_18_confirmed: boolean } | null
   /** Local-only drafts, keyed by question/interaction. Never visible to the partner. */
   drafts: Record<string, string>
 }
