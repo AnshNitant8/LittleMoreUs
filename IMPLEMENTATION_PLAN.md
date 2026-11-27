@@ -201,3 +201,10 @@ Stage S1 (built):
 - Checked:
   - 7 server tests on real Postgres (PGlite): sign-up, re-link, invite across phones, private answers, Gemini story, access rules, concurrent-save retry.
   - Browser run with two separate browsers against the local server: invite → accept → both answer → a real Gemini story visible to both.
+
+Setup notes (27 Nov 2026):
+- Supabase was added through Vercel's Storage tab. That integration supplies SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY and POSTGRES_URL_NON_POOLING to both Vercel projects.
+- Each deploy applies supabase/schema.sql.
+- The server reads the Gemini key from GEMINI_API_KEY or the existing VITE_GEMINI_API_KEY. In server mode, the browser bundle never contains it.
+- Sign-in works with Supabase's standard emails. Tapping the link signs you in, including in a different browser, and the 18+ tick is stored on the new account. The 6-digit code works too, once the email templates include {{ .Token }}.
+- ADMIN_EMAILS is set in Vercel.
