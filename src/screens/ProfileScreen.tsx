@@ -9,6 +9,7 @@ import { useService } from '../hooks/useService'
 import {
   disconnectCouple,
   getCouple,
+  getEntitlement,
   getMe,
   logout,
   requestExport,
@@ -309,12 +310,25 @@ function TimezoneForm({ couple, onDone }: { couple: CoupleView; onDone: () => vo
 }
 
 function ExportSection() {
+  const { navigate } = useRouter()
+  const ent = useService(getEntitlement)
   const exp = useAction('export', (key) => requestExport({ idempotencyKey: key }))
   const [done, setDone] = useState(false)
+  const unlocked = ent.state.status === 'ready' && ent.state.data.unlocked
+  if (ent.state.status !== 'ready') return null
+  if (!unlocked) {
+    return (
+      <section aria-labelledby="export-title" className="card space-y-2">
+        <h2 id="export-title" className="font-extrabold">Your data</h2>
+        <p className="text-sm text-ink-soft">Export comes with the full Storybook. Once it's unlocked, you can download your profile and shared stories as a file, once a day.</p>
+        <button type="button" className="btn-secondary" onClick={() => navigate('unlock')}>Unlock to export</button>
+      </section>
+    )
+  }
   return (
     <section aria-labelledby="export-title" className="card space-y-2">
       <h2 id="export-title" className="font-extrabold">Your data</h2>
-      <p className="text-sm text-ink-soft">Download your profile and your shared stories as a file. Free, once a day. Answers are never included.</p>
+      <p className="text-sm text-ink-soft">Download your profile and your shared stories as a file, once a day. Answers are never included.</p>
       <button
         type="button"
         className="btn-secondary"

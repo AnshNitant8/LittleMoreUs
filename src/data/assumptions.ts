@@ -229,7 +229,7 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     stage: 6,
     topic: 'Export',
-    text: 'Export is free once per day (in the couple time zone). The JSON holds your profile, your couple settings, and every story you can see, including the text of locked ones, plus the question and your own reaction. It never holds raw answers or your partner\'s reactions.',
+    text: 'Changed at your request: export is available only with the full Storybook unlock (the spec had it free). It can be used once per day (in the couple time zone). Without the unlock, Storybook and Profile point to the paywall instead. The JSON holds your profile, your couple settings, and every story you can see, including the text of locked ones, plus the question and your own reaction. It never holds raw answers or your partner\'s reactions.',
   },
   {
     stage: 6,

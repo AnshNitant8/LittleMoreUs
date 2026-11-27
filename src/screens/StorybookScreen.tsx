@@ -65,10 +65,16 @@ export function StorybookScreen() {
                 <button type="button" className="btn-secondary" onClick={() => navigate('unlock')}>Unlock full Storybook</button>
               </>
             )}
-            <button type="button" className="btn-ghost w-full" disabled={exp.busy} onClick={download}>
-              {exp.busy ? 'Preparing…' : 'Export my stories (free)'}
-            </button>
-            {exported && <p role="status" className="text-center text-sm text-ink-soft">Your export has downloaded. It has your profile and stories, never your answers.</p>}
+            {state.data.unlocked ? (
+              <>
+                <button type="button" className="btn-ghost w-full" disabled={exp.busy} onClick={download}>
+                  {exp.busy ? 'Preparing…' : 'Export my stories'}
+                </button>
+                {exported && <p role="status" className="text-center text-sm text-ink-soft">Your export has downloaded. It has your profile and stories, never your answers.</p>}
+              </>
+            ) : (
+              <p className="text-center text-sm text-ink-soft">Export comes with the full Storybook.</p>
+            )}
             <FieldError id="export-error" message={exp.error?.message} />
           </section>
         </>

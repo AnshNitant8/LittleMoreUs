@@ -163,6 +163,14 @@ fallback library; the live Gemini story was checked in the Stage 5 run.
 | 11 | QR paywall → pending; Approve unlocks for both; Reject stays locked | Pass | Browser (approve) + unit (reject) |
 | 12 | Disconnect keeps saved stories for both; delete says "for both" | Pass | Browser |
 | 13 | Account deletion: consequences, unticked shared-stories option, 7-day recovery | Pass | Browser + unit |
-| 14 | Export JSON has no raw answers | Pass | Browser + unit |
+| 14 | Export JSON has no raw answers (export now needs the Storybook unlock, at the owner's request) | Pass | Browser + unit |
 | 15 | Guess My Answer reveals only options after both respond, no score, no free text | Pass | Browser + unit |
 | 16 | No streaks, scores or counters by default; Prototype Controls is the only dev tooling | Pass | Browser text check on Home, Explore, Storybook, Profile |
+
+## Change after handoff: export needs the unlock
+At the owner's request, export is no longer free: `requestExport` refuses with
+403 (`locked: true`) unless the user has the full Storybook unlock (their own,
+or their current partner's). Storybook hides the export button and Profile shows
+"Unlock to export", which opens the paywall. Deleting stays free. Tests: 109/109.
+Browser: locked state in Storybook and Profile, pending payment still locked,
+export works in both places after Approve, no accessibility violations.

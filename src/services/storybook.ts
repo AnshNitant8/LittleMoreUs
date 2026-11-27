@@ -1,5 +1,5 @@
 // Storybook (spec Screen 14, Sections 10 and 11): saved timeline, Recent,
-// locked previews, delete for both, and the free JSON export.
+// locked previews, delete for both (free), and the JSON export (needs the unlock).
 
 import { CATEGORIES } from '../domain/constants'
 import type { CategoryId, Result, Story } from '../domain/types'
@@ -95,7 +95,7 @@ export async function deleteStory(input: { story_id: string; idempotencyKey: str
   })
 }
 
-// ---------- Export (free, once per day, no raw answers) ----------
+// ---------- Export (with the full Storybook unlock, once per day, no raw answers) ----------
 
 export interface ExportFile {
   filename: string
@@ -105,6 +105,8 @@ export interface ExportFile {
 export async function requestExport(input: { idempotencyKey: string }): Promise<Result<ExportFile>> {
   return mutate(input.idempotencyKey, (db) => {
     const me = requireUser(db)
+    // Product decision (overrides the spec's "export is free"): export comes with the unlock.
+    if (!unlockedBy(db, me.user_id)) fail(403, 'Export comes with the full Storybook. Unlock it to download your stories.', { locked: true })
     const couple = activeCoupleOf(db, me.user_id)
     const tz = couple?.timezone ?? 'UTC'
     const today = localDay(nowMs(), tz)

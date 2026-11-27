@@ -173,10 +173,31 @@ describe('QR paywall and manual verification (acceptance 11)', () => {
   })
 })
 
+async function unlock() {
+  const sub = await submitPaymentReference({ payment_reference: 'EXPORT-REF-1', idempotencyKey: k() })
+  if (!sub.ok) throw new Error(sub.error.message)
+  const q = await adminListPayments()
+  if (!q.ok) throw new Error()
+  await adminVerifyPayment({ entitlement_id: q.data[0].entitlement_id, decision: 'approve', idempotencyKey: k() })
+}
+
 describe('export (acceptance 14)', () => {
+  it('is refused without the full Storybook unlock, and allowed for both partners after it', async () => {
+    await pairedCouple()
+    await makeStory()
+    const locked = await requestExport({ idempotencyKey: k() })
+    expect(!locked.ok && locked.error).toMatchObject({ code: 403, locked: true })
+    await switchUser('A')
+    await unlock() // A buys
+    expect((await requestExport({ idempotencyKey: k() })).ok).toBe(true)
+    await switchUser('B')
+    expect((await requestExport({ idempotencyKey: k() })).ok).toBe(true) // covered by the partner's unlock
+  })
+
   it('downloads JSON with profile and stories but no raw answers, once per day', async () => {
     await pairedCouple()
     await makeStory(memoryQ, 'Dancing in the kitchen', 'The rain on the window')
+    await unlock()
     const r = await requestExport({ idempotencyKey: k() })
     if (!r.ok) throw new Error(r.error.message)
     const data = JSON.parse(r.data.json)
