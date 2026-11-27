@@ -18,6 +18,7 @@ export function supabaseGateway(sb: SupabaseClient): Gateway {
     loadScope: (authId, token) => call('app_load_scope', { p_auth_id: authId, p_token: token }),
     loadAll: () => call('app_load_all', {}),
     accountExists: (identifier) => call('app_account_exists', { p_identifier: identifier }),
+    cleanupSelftest: () => call('app_selftest_cleanup', {}),
     linkAuth: (identifier, authId) => call('app_link_auth', { p_identifier: identifier, p_auth_id: authId }),
     async commit(ops) {
       const res = await call<{ erased_auth_ids: string[] }>('app_commit', { p_ops: ops })

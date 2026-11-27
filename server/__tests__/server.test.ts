@@ -177,3 +177,19 @@ describe('access rules', () => {
     expect(await a.call('getMe')).toMatchObject({ display_name: 'Priya' })
   })
 })
+
+describe('live dry run (selftest)', () => {
+  it('passes every feature on a fresh database and leaves nothing behind', async () => {
+    const { runSelftest } = await import('../selftest')
+    const before = await pg.query<{ n: number }>('select count(*)::int as n from app_users')
+    const out = await runSelftest({ gateway, adminEmails: ['admin@x.com'] })
+    const failed = out.checks.filter((c) => !c.ok)
+    expect(failed).toEqual([])
+    const after = await pg.query<{ n: number }>('select count(*)::int as n from app_users')
+    expect(after.rows[0].n).toBe(before.rows[0].n)
+    for (const t of ['couples', 'interactions', 'responses', 'stories', 'notifications', 'entitlements', 'invitations']) {
+      const r = await pg.query<{ n: number }>(`select count(*)::int as n from app_${t}`)
+      expect([t, r.rows[0].n]).toEqual([t, 0])
+    }
+  }, 60_000)
+})

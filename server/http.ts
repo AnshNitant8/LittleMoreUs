@@ -7,6 +7,7 @@ import { setAiClient, createGeminiClient } from '../src/services/gemini'
 import type { Gateway } from './gateway'
 import { handleRpc, withDb, type Caller, type RpcRequest } from './rpc'
 import { buildDb, diffDb } from './scope'
+import { runSelftest } from './selftest'
 
 export interface ServerConfig {
   gateway: Gateway
@@ -15,6 +16,7 @@ export interface ServerConfig {
   adminEmails: string[]
   geminiKey?: string
   cronSecret?: string
+  selftestToken?: string
 }
 
 const MAX_BODY = 64 * 1024
@@ -49,6 +51,11 @@ export function createHandler(cfg: ServerConfig) {
     try {
       if (url.pathname === '/api/cron') return await cron(req, res, cfg)
       if (url.pathname === '/api/health') return await health(res, cfg)
+      if (url.pathname === '/api/selftest') {
+        // Off unless SELFTEST_TOKEN is set; the token must match exactly.
+        if (!cfg.selftestToken || url.searchParams.get('token') !== cfg.selftestToken) return send(res, 404, { error: 'not_found' })
+        return send(res, 200, await runSelftest({ gateway: cfg.gateway, adminEmails: cfg.adminEmails }))
+      }
       if (url.pathname !== '/api/rpc') return send(res, 404, { error: 'not_found' })
       if (req.method !== 'POST') return send(res, 405, { error: 'method_not_allowed' })
       let body: RpcRequest

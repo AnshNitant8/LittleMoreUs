@@ -279,12 +279,50 @@ begin
   return jsonb_build_object('erased_auth_ids', erased);
 end $$;
 
+-- Removes everything created by the live dry run (GET /api/selftest). Only
+-- touches accounts named selftest-…@example.invalid, which real sign-in never
+-- produces.
+create or replace function app_selftest_cleanup()
+returns integer language plpgsql set search_path = public as $$
+declare
+  u text[];
+  c text[];
+  i text[];
+  s text[];
+  total integer := 0;
+  n integer;
+  x text;
+begin
+  u := array(select id from app_users where identifier like 'selftest-%@example.invalid');
+  c := array(select id from app_couples where member_a = any(u) or member_b = any(u));
+  i := array(select id from app_interactions where couple_id = any(c));
+  s := array(select id from app_stories where couple_id = any(c));
+  delete from app_responses where interaction_id = any(i); get diagnostics n = row_count; total := total + n;
+  delete from app_reactions where story_id = any(s); get diagnostics n = row_count; total := total + n;
+  delete from app_reports where story_id = any(s); get diagnostics n = row_count; total := total + n;
+  delete from app_stories where id = any(s); get diagnostics n = row_count; total := total + n;
+  delete from app_interactions where id = any(i); get diagnostics n = row_count; total := total + n;
+  delete from app_couples where id = any(c); get diagnostics n = row_count; total := total + n;
+  delete from app_invitations where inviter_id = any(u); get diagnostics n = row_count; total := total + n;
+  delete from app_question_history where user_id = any(u); get diagnostics n = row_count; total := total + n;
+  delete from app_entitlements where purchaser_id = any(u); get diagnostics n = row_count; total := total + n;
+  delete from app_notifications where user_id = any(u); get diagnostics n = row_count; total := total + n;
+  delete from app_skip_counts where user_id = any(u); get diagnostics n = row_count; total := total + n;
+  delete from app_export_log where id = any(u); get diagnostics n = row_count; total := total + n;
+  delete from app_idempotency where user_id = any(u) or id like 'selftest-%'; get diagnostics n = row_count; total := total + n;
+  foreach x in array u || c loop
+    delete from app_events where data::text like '%' || x || '%'; get diagnostics n = row_count; total := total + n;
+  end loop;
+  delete from app_users where id = any(u); get diagnostics n = row_count; total := total + n;
+  return total;
+end $$;
+
 -- Only the server's service role may call these.
 do $$
 declare f text;
 begin
   if exists (select 1 from pg_roles where rolname = 'service_role') then
-    foreach f in array array['app_load_scope(text,text)', 'app_load_all()', 'app_account_exists(text)', 'app_link_auth(text,text)', 'app_commit(jsonb)'] loop
+    foreach f in array array['app_load_scope(text,text)', 'app_load_all()', 'app_account_exists(text)', 'app_link_auth(text,text)', 'app_commit(jsonb)', 'app_selftest_cleanup()'] loop
       execute format('revoke all on function %s from public, anon, authenticated', f);
       execute format('grant execute on function %s to service_role', f);
     end loop;

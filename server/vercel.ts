@@ -31,6 +31,7 @@ const handler = missing.length
         // The older VITE_ name still works; in server mode it never reaches the browser.
         geminiKey: env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY,
         cronSecret: env.CRON_SECRET,
+        selftestToken: env.SELFTEST_TOKEN && env.SELFTEST_TOKEN.length >= 16 ? env.SELFTEST_TOKEN : undefined,
       })
     })()
 

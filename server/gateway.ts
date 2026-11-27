@@ -13,6 +13,8 @@ export interface Gateway {
   loadAll(): Promise<ScopeRows>
   accountExists(identifier: string): Promise<boolean>
   linkAuth(identifier: string, authId: string): Promise<boolean>
+  /** Removes the live dry run's test accounts and everything they made. */
+  cleanupSelftest(prefix: string): Promise<number>
   /** Saves all ops or none. Throws ConflictError if a record changed since it was read. */
   commit(ops: Op[]): Promise<{ erased_auth_ids: string[] }>
 }
@@ -32,6 +34,7 @@ export function sqlGateway(db: SqlRunner): Gateway {
     loadAll: () => one('select app_load_all() as r', []),
     accountExists: (id) => one('select app_account_exists($1) as r', [id]),
     linkAuth: (id, auth) => one('select app_link_auth($1, $2) as r', [id, auth]),
+    cleanupSelftest: () => one('select app_selftest_cleanup() as r', []),
     async commit(ops) {
       try {
         return await one('select app_commit($1) as r', [JSON.stringify(ops)])
