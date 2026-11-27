@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* Design tokens (spec Section 16). Primary coral is darkened from #F2765D to
+   #C0482F so white button text meets WCAG AA (4.99:1). #F2765D stays as a
+   decorative accent only. */
+@theme {
+  --color-cream: #FFF8F0;
+  --color-cream-deep: #F8EBDD;
+  --color-coral: #C0482F;
+  --color-coral-hover: #A63D27;
+  --color-coral-soft: #F2765D;
+  --color-coral-tint: #FDE7E0;
+  --color-ink: #3D2C29;
+  --color-ink-soft: #6B5651;
+  --color-line: #EADBCD;
+  --color-proto: #1F2A44;
+  --color-proto-accent: #FACC15;
+
+  --color-cat-remember: #FDE2D8;
+  --color-cat-journey: #E1ECFB;
+  --color-cat-appreciate: #FCEFC7;
+  --color-cat-need: #DDF1E4;
+  --color-cat-play: #EDE3F8;
+
+  --font-sans: "Nunito", ui-rounded, "Segoe UI", system-ui, -apple-system, sans-serif;
+  --radius-card: 1.25rem;
+}
+
+html {
+  /* Respect browser text scaling: rem-based sizes everywhere. */
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-coral);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex min-h-11 w-full items-center justify-center rounded-full bg-coral px-6 py-3 text-base font-bold text-white shadow-sm transition hover:bg-coral-hover disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply inline-flex min-h-11 w-full items-center justify-center rounded-full border-2 border-coral bg-white px-6 py-3 text-base font-bold text-coral transition hover:bg-coral-tint disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex min-h-11 items-center justify-center rounded-full px-4 py-2 font-semibold text-ink-soft underline-offset-4 hover:underline;
+  }
+  .card {
+    @apply rounded-[var(--radius-card)] bg-white p-5 shadow-[0_2px_12px_rgba(61,44,41,0.06)];
+  }
+  .screen-title {
+    @apply text-2xl font-extrabold tracking-tight text-ink;
+  }
+}
