@@ -51,11 +51,18 @@ export interface AiClient {
   classifyDistress(text: string): Promise<boolean>
 }
 
-const MODELS = [
-  (import.meta.env.VITE_GEMINI_MODEL as string | undefined) || 'gemini-3.5-flash',
-  'gemini-3.8-flash',
+/**
+ * Tried in order. Measured 27 Nov 2026 with the project key: the flash-lite
+ * models answer in under a second, while gemini-3.5-flash often timed out and
+ * gemini-3.8-flash returned 503 "high demand". Override the first choice with
+ * VITE_GEMINI_MODEL.
+ */
+export const MODELS = [
+  (import.meta.env.VITE_GEMINI_MODEL as string | undefined) || 'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash',
 ].filter((m, i, all) => all.indexOf(m) === i)
-const STORY_TIMEOUT_MS = 12_000
+const STORY_TIMEOUT_MS = 10_000
 const CLASSIFY_TIMEOUT_MS = 6_000
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {

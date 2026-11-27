@@ -220,6 +220,8 @@ export interface Story {
   quarantined: boolean
   hidden_for_user_ids: UserId[]
   model_name: string
+  /** Prototype diagnostics: why the fallback library was used, e.g. "timeout,overloaded". */
+  fallback_reason?: string | null
   prompt_version: string
 }
 

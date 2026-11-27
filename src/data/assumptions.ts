@@ -184,7 +184,7 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     stage: 5,
     topic: 'Gemini model and timing',
-    text: 'Stories use gemini-3.5-flash first (override with VITE_GEMINI_MODEL), then gemini-3.8-flash, with 12 seconds per model. The distress classifier uses one model with a 6 second limit. If Gemini is slow, rate-limited or unavailable, the moment still completes with a library story.',
+    text: 'Stories use gemini-3.5-flash-lite first (override with VITE_GEMINI_MODEL), then gemini-3.1-flash-lite, then gemini-3.5-flash, with 10 seconds per model. The larger flash models were timing out or overloaded in testing, so the fast lite models go first. Prototype Controls, AI tab, shows whether each story came from Gemini or the fallback library, and why. The distress classifier uses one model with a 6 second limit. If Gemini is slow, rate-limited or unavailable, the moment still completes with a library story.',
   },
   {
     stage: 5,

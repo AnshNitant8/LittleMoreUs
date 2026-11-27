@@ -4,7 +4,7 @@
 
 import { FALLBACK_STORIES } from '../data/fallbackStories'
 import { REGENERATE_WINDOW_HOURS } from '../domain/constants'
-import { storyLabels, validateStory, type StoryProblem } from '../domain/rules/storyValidation'
+import { storyLabels, validateStory } from '../domain/rules/storyValidation'
 import type { Interaction, ReactionValue, Report, ReportReason, Result, Story, StoryIntent } from '../domain/types'
 import { ALL_QUESTIONS } from '../data/questions'
 import { newId } from '../utils/id'
@@ -24,6 +24,21 @@ interface Composed {
   text: string
   is_fallback: boolean
   model_name: string
+  /** Why the fallback library was used (metadata only, never story or answer text). */
+  fallback_reason: string | null
+}
+
+/** Short, text-free label for a failed Gemini call. */
+export function classifyAiError(e: unknown): string {
+  const m = e instanceof Error ? e.message : String(e)
+  if (/timeout/i.test(m)) return 'timeout'
+  if (/"code":\s*503|UNAVAILABLE|high demand/i.test(m)) return 'overloaded'
+  if (/"code":\s*429|RESOURCE_EXHAUSTED|quota/i.test(m)) return 'rate_limited'
+  if (/API key|"code":\s*40[013]|PERMISSION_DENIED|referer/i.test(m)) return 'key_rejected'
+  if (/"code":\s*404|not found|no longer available/i.test(m)) return 'model_unavailable'
+  if (/bad_shape|JSON/i.test(m)) return 'bad_output'
+  if (/fetch|network/i.test(m)) return 'network'
+  return 'call_error'
 }
 
 interface Prepared {
@@ -74,7 +89,7 @@ function prepare(db: Db, interactionId: string, opts: { allowCompleted?: boolean
 /** Call Gemini, validate, retry once, then fall back. Logs metadata only. */
 async function composeStory(p: Prepared, interactionId: string): Promise<Composed> {
   const ai = getAiClient()
-  const failures: (StoryProblem | 'call_error')[] = []
+  const failures: string[] = []
   if (ai.available) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -89,15 +104,16 @@ async function composeStory(p: Prepared, interactionId: string): Promise<Compose
           context: p.request.context,
           answers: [p.request.answer_from_parent_a, p.request.answer_from_parent_b],
         })
-        if (problems.length === 0) return { text, is_fallback: false, model_name: model }
-        failures.push(problems[0])
-      } catch {
-        failures.push('call_error')
+        if (problems.length === 0) return { text, is_fallback: false, model_name: model, fallback_reason: null }
+        failures.push(`check_failed:${problems[0]}`)
+      } catch (e) {
+        failures.push(classifyAiError(e))
       }
     }
   }
-  logMeta('story_fallback_used', { interaction_id: interactionId, reason: ai.available ? failures.join(',') : 'no_api_key' })
-  return { text: FALLBACK_STORIES[p.intent], is_fallback: true, model_name: 'fallback-library' }
+  const reason = ai.available ? failures.join(',') : 'no_api_key'
+  logMeta('story_fallback_used', { interaction_id: interactionId, reason })
+  return { text: FALLBACK_STORIES[p.intent], is_fallback: true, model_name: 'fallback-library', fallback_reason: reason }
 }
 
 function logMeta(name: string, props: Record<string, string | boolean>) {
@@ -162,6 +178,7 @@ function newStory(i: Interaction, intent: StoryIntent, c: Composed, fromId: stri
     quarantined: false,
     hidden_for_user_ids: [],
     model_name: c.model_name,
+    fallback_reason: c.fallback_reason,
     prompt_version: PROMPT_VERSION,
   }
 }

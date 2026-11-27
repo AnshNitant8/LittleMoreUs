@@ -4,7 +4,10 @@ import type { DeviceSlot, FeatureFlags } from '../domain/types'
 import { useService } from '../hooks/useService'
 import {
   advanceClock,
+  getAiStatus,
   getPrototypeState,
+  testGemini,
+  type AiTestResult,
   type PrototypeState,
   listAnalytics,
   listNotifications,
@@ -24,10 +27,11 @@ import { formatDateTime } from '../utils/time'
 // Developer tooling for usability testing. Deliberately styled unlike the
 // parent-facing app (dark navy, yellow hazard accents, monospace labels).
 
-type Tab = 'session' | 'flags' | 'inbox' | 'analytics' | 'admin' | 'assumptions'
+type Tab = 'session' | 'flags' | 'ai' | 'inbox' | 'analytics' | 'admin' | 'assumptions'
 const TAB_LABELS: Record<Tab, string> = {
   session: 'User & clock',
   flags: 'Flags',
+  ai: 'AI',
   inbox: 'Inbox',
   analytics: 'Analytics',
   admin: 'Admin',
@@ -118,6 +122,7 @@ export function PrototypeControls() {
                   )}
                   {tab === 'session' && <SessionPanel data={state.data} />}
                   {tab === 'flags' && <FlagsPanel flags={state.data.flags} />}
+                  {tab === 'ai' && <AiPanel />}
                   {tab === 'inbox' && <InboxPanel slots={state.data.slot_users} />}
                   {tab === 'analytics' && <AnalyticsPanel />}
                   {tab === 'admin' && <AdminPanel />}
@@ -423,6 +428,75 @@ function PaymentQueue() {
         </li>
       ))}
     </ul>
+  )
+}
+
+const REASONS: Record<string, string> = {
+  no_api_key: 'No Gemini key in this build. Set VITE_GEMINI_API_KEY and rebuild (on Vercel: add it, then redeploy).',
+  timeout: 'Gemini took too long to answer.',
+  overloaded: 'Gemini said it is overloaded (503). Usually temporary.',
+  rate_limited: 'Free-tier quota or rate limit reached (429).',
+  key_rejected: 'Google rejected the key, or it is restricted to other websites.',
+  model_unavailable: 'That Gemini model is not available to this key.',
+  bad_output: 'Gemini replied in an unexpected format.',
+  network: 'Could not reach Gemini from this browser.',
+  call_error: 'The Gemini call failed.',
+}
+
+function explain(reason: string): string {
+  return reason
+    .split(',')
+    .map((r) => (r.startsWith('check_failed:') ? `Story failed the safety and quality checks (${r.slice(13)}).` : (REASONS[r] ?? r)))
+    .filter((v, i, all) => all.indexOf(v) === i)
+    .join(' Then: ')
+}
+
+function AiPanel() {
+  const { state } = useService(getAiStatus)
+  const [test, setTest] = useState<AiTestResult | 'running' | null>(null)
+  if (state.status !== 'ready') return null
+  const d = state.data
+  return (
+    <>
+      <Section title="Gemini">
+        <p>
+          Key in this build: <strong className={d.key_configured ? 'text-green-300' : 'text-red-300'}>{d.key_configured ? 'yes' : 'no'}</strong>
+        </p>
+        {!d.key_configured && <p className="font-sans text-slate-300">{REASONS.no_api_key}</p>}
+        <p className="text-slate-300">Models, in order: {d.models.join(' → ')}</p>
+        <button
+          type="button"
+          className={protoBtn}
+          disabled={test === 'running'}
+          onClick={async () => {
+            setTest('running')
+            setTest(await testGemini())
+          }}
+        >
+          {test === 'running' ? 'Testing…' : 'Test Gemini now'}
+        </button>
+        {test && test !== 'running' && (
+          <p role="status" className="mt-2 font-sans">
+            {test.ok
+              ? `Working: ${test.model} answered in ${(test.ms / 1000).toFixed(1)}s${test.passed_checks ? ' and passed the story checks.' : ', but the sample failed the story checks.'}`
+              : `Not working: ${explain(test.reason)}`}
+          </p>
+        )}
+        <p className="mt-1 text-[11px] text-slate-400">The test sends a made-up sample, never real answers.</p>
+      </Section>
+      <Section title={`Recent stories: ${d.gemini_count} from Gemini, ${d.fallback_count} from the fallback library`}>
+        {d.recent.length === 0 && <p className="text-slate-400">No stories yet.</p>}
+        <ul className="space-y-2">
+          {d.recent.map((r) => (
+            <li key={r.story_id} className="rounded-md bg-slate-800 p-2">
+              <p className="text-[11px] text-slate-400">{formatDateTime(r.created_at)}</p>
+              <p className={r.fallback_reason ? 'text-amber-300' : 'text-green-300'}>{r.fallback_reason ? 'Fallback library story' : `Written by ${r.source}`}</p>
+              {r.fallback_reason && <p className="font-sans text-slate-300">{explain(r.fallback_reason)}</p>}
+            </li>
+          ))}
+        </ul>
+      </Section>
+    </>
   )
 }
 

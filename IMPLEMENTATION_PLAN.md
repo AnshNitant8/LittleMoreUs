@@ -174,3 +174,10 @@ or their current partner's). Storybook hides the export button and Profile shows
 "Unlock to export", which opens the paywall. Deleting stays free. Tests: 109/109.
 Browser: locked state in Storybook and Profile, pending payment still locked,
 export works in both places after Approve, no accessibility violations.
+
+## Change: AI story reliability (27 Nov 2026)
+
+- Cause found in a live test: gemini-3.5-flash timed out and gemini-3.8-flash returned 503 "high demand", so every story fell back to the library. The validator was not the problem.
+- Model order is now gemini-3.5-flash-lite, gemini-3.1-flash-lite, gemini-3.5-flash, with 10 seconds each. A live run produced valid Gemini stories for all 7 story types in about 1 second each.
+- Each story now records why it fell back (no key, timeout, overloaded, rate limit, key rejected, failed a check).
+- Prototype Controls has an AI tab: key status, model order, a "Test Gemini now" button and the source of recent stories.
