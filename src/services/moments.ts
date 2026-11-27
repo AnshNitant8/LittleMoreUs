@@ -26,6 +26,7 @@ import {
   activeCoupleOf,
   activeSession,
   cachedResult,
+  defer,
   fail,
   isOffline,
   mutate,
@@ -597,7 +598,7 @@ export async function respondToInteraction(input: { interaction_id: string; answ
     return interactionView(db, i, me.user_id)
   })
   // Generation is asynchronous: kick it off after the answer is safely stored.
-  if (res.ok && res.data.status === 'generating') void generateFor(res.data.interaction_id)
+  if (res.ok && res.data.status === 'generating') defer(() => generateFor(res.data.interaction_id))
   return res
 }
 

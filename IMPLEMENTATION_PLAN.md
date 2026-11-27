@@ -188,3 +188,16 @@ export works in both places after Approve, no accessibility violations.
 - Welcome's two buttons and the invite screen all lead to this one flow. A pending invite stays on the device and is waiting to accept after the code.
 - Prototype Controls shows the build commit and time, so it's clear which deploy is open.
 - Checked in a browser: invite → Dolly@gmail.com (new) → 18+ → code → Accept; and a returning user signs in with no 18+ step.
+
+## Change: real server with Supabase (started 27 Nov 2026)
+
+Stage S1 (built):
+- Supabase schema with RLS that denies all client access. The server holds the only key.
+- Vercel function `/api/rpc` runs every service rule on the server. The browser sends the function name and arguments.
+- Email sign-in codes through Supabase Auth (email only, as chosen). Phone sign-in is refused politely.
+- Gemini is server-side only. The browser bundle in server mode contains no Gemini key (checked).
+- A daily `/api/cron` runs clean-up across all couples. Time rules also run at the start of every request.
+- Admin panel (payments, reports, AI, analytics) shows only for `ADMIN_EMAILS`.
+- Checked:
+  - 7 server tests on real Postgres (PGlite): sign-up, re-link, invite across phones, private answers, Gemini story, access rules, concurrent-save retry.
+  - Browser run with two separate browsers against the local server: invite → accept → both answer → a real Gemini story visible to both.

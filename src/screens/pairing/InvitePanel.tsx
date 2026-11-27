@@ -7,6 +7,7 @@ import { useAction } from '../../hooks/useAction'
 import { useService } from '../../hooks/useService'
 import { cancelInvitation, createInvitation, getMyInvitation, getPrototypeState, switchUser } from '../../services/api'
 import { browserTimezone, formatDateTime } from '../../utils/time'
+import { SERVER_MODE } from '../../services/serverMode'
 
 export function inviteLink(token: string): string {
   return `${window.location.origin}${window.location.pathname}#/invite/${token}`
@@ -96,6 +97,7 @@ export function InvitePanel() {
             </button>
           </div>
           <p className="text-sm text-ink-soft">Regenerating makes a new link and the old one stops working.</p>
+          {!SERVER_MODE && (
           <button
             type="button"
             onClick={openAsPartner}
@@ -103,6 +105,7 @@ export function InvitePanel() {
           >
             Prototype: Open as partner
           </button>
+          )}
         </>
       ) : (
         <button type="button" className="btn-primary" disabled={create.busy} onClick={() => create.run()}>

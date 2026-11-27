@@ -1,10 +1,20 @@
 // The only module that talks to Gemini. Kept isolated so it can later move
 // behind a server endpoint without touching the rest of the app.
 //
-// PROTOTYPE LIMITATION: the API key is read from VITE_GEMINI_API_KEY and is
-// therefore shipped to the browser, where it is extractable. Not production-safe.
+// Server mode: this runs only on the server, with GEMINI_API_KEY from Vercel.
+// Browser-only prototype: the key comes from VITE_GEMINI_API_KEY and is
+// shipped to the browser, where it is extractable. Not production-safe.
 
 import { GoogleGenAI, Type } from '@google/genai'
+
+/**
+ * Browser-prototype settings. The server bundle defines import.meta.env as {}
+ * and passes its own key; server-mode browser builds blank the key out.
+ */
+const viteEnv = {
+  VITE_GEMINI_API_KEY: import.meta.env.VITE_GEMINI_API_KEY as string | undefined,
+  VITE_GEMINI_MODEL: import.meta.env.VITE_GEMINI_MODEL as string | undefined,
+}
 
 export const STORY_SYSTEM_INSTRUCTION =
   'You write one short story in the imagined voice of a baby or toddler speaking to their two parents. Output JSON only: {"story_text": string, "intent_used": string}. Rules: 2 to 4 sentences, at most about 600 characters, text only. Use each parent\'s label exactly as supplied and give both parents balanced attention. Use only information in the question and the two answers. Never invent facts, feelings, plans, agreement, compromise or happy endings. Never judge or compare the parents, never use the child to create guilt, never give medical, therapeutic or relationship advice, never claim to know the child\'s real feelings. Choose the narrative shape from story_intent and never infer the intent from the answers: memory = reflective past tense; present or appreciation = present tense; preference = framed as choices, not events; future_plan = forward-looking ("is leaning towards", "might"), never narrating a past memory; support = acknowledge needs without claiming anything is resolved; playful_hypothetical = light, never turning a guess into a fact. Set intent_used equal to story_intent. If both labels are identical, use the label with the first name each time.'
@@ -58,7 +68,7 @@ export interface AiClient {
  * VITE_GEMINI_MODEL.
  */
 export const MODELS = [
-  (import.meta.env.VITE_GEMINI_MODEL as string | undefined) || 'gemini-3.5-flash-lite',
+  viteEnv.VITE_GEMINI_MODEL || 'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
   'gemini-3.5-flash',
 ].filter((m, i, all) => all.indexOf(m) === i)
@@ -81,7 +91,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   })
 }
 
-function createGeminiClient(apiKey: string | undefined): AiClient {
+export function createGeminiClient(apiKey: string | undefined): AiClient {
   if (!apiKey) {
     return {
       available: false,
@@ -156,7 +166,7 @@ function createGeminiClient(apiKey: string | undefined): AiClient {
   }
 }
 
-let client: AiClient = createGeminiClient(import.meta.env.VITE_GEMINI_API_KEY as string | undefined)
+let client: AiClient = createGeminiClient(viteEnv.VITE_GEMINI_API_KEY)
 
 export function getAiClient(): AiClient {
   return client
@@ -168,5 +178,5 @@ export function setAiClient(next: AiClient) {
 }
 
 export function resetAiClient() {
-  client = createGeminiClient(import.meta.env.VITE_GEMINI_API_KEY as string | undefined)
+  client = createGeminiClient(viteEnv.VITE_GEMINI_API_KEY)
 }

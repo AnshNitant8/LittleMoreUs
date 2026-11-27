@@ -5,27 +5,34 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/build-vercel.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "dev:server": "node scripts/dev-server.mjs",
+    "dev:app": "VITE_SUPABASE_URL=local VITE_SUPABASE_ANON_KEY=local VITE_DEV_AUTH=1 vite"
   },
   "dependencies": {
     "@google/genai": "^3.6.1",
+    "@supabase/supabase-js": "^2.119.2",
+    "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.6.1",
     "@tailwindcss/vite": "^4.3.5",
     "@testing-library/jest-dom": "^8.0.0",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.13",
     "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "axe-core": "^4.10.2",
+    "esbuild": "^0.28.2",
     "jsdom": "^31.0.1",
     "oxlint": "^1.94.0",
     "tailwindcss": "^4.3.5",

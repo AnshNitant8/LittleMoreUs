@@ -26,6 +26,23 @@ approve payments, review reports, and read the Assumptions page.
 
 OTP code for every account: `123456`.
 
+## Server mode (Vercel + Supabase)
+
+When the build has a Supabase address, the same app runs against a real
+server: each partner signs in with an emailed code on their own phone, and
+all rules run in a Vercel function (`server/`). Gemini is called only from
+the server with `GEMINI_API_KEY`, so no key ships to browsers.
+
+- `supabase/schema.sql`: tables, Row Level Security (no client access at all)
+  and the five `app_*` functions the server calls. Every Vercel deploy
+  applies it automatically (`scripts/build-vercel.mjs`).
+- `server/rpc.ts`: one endpoint. It loads the caller's couple, runs the same
+  service functions as the prototype, and saves the changes in one versioned
+  write (retried if the partner saved at the same moment).
+- Local server mode without Supabase: `npm run dev:server` (Postgres in
+  process via PGlite, code 123456) and `npm run dev:app`.
+- `npm test` includes server tests with two simulated phones.
+
 ## What was built
 
 All seven stages of the build spec:

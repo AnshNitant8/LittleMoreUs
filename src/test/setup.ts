@@ -12,4 +12,4 @@ export const offlineAi = {
 
 beforeEach(() => setAiClient(offlineAi))
 afterEach(() => cleanup())
-window.scrollTo = () => {}
+if (typeof window !== "undefined") window.scrollTo = () => {}

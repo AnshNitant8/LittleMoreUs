@@ -115,6 +115,8 @@ export interface User {
   onboarding_complete: boolean
   /** True once the user has seen the invite-partner onboarding step (sent or skipped). */
   invite_step_done: boolean
+  /** Server mode only: the Supabase sign-in this profile belongs to. */
+  auth_id?: string
 }
 
 export interface Couple {

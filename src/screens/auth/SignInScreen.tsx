@@ -3,6 +3,7 @@ import { useRouter } from '../../app/router'
 import { FieldError, OnboardingLayout } from '../../components/Onboarding'
 import { useAction } from '../../hooks/useAction'
 import { requestOtp } from '../../services/api'
+import { SERVER_MODE } from '../../services/serverMode'
 
 /**
  * One way in (Screen 02). The person types a phone number or email and the app
@@ -38,7 +39,7 @@ export function SignInScreen() {
         intro={
           isNew
             ? "You're new here, welcome. Confirm you're 18 or older and we'll send your code."
-            : "Enter your phone number or email. We'll send a one-time code. If you're new, we'll create your account. There are no passwords."
+            : `Enter your ${SERVER_MODE ? 'email' : 'phone number or email'}. We'll send a one-time code. If you're new, we'll create your account. There are no passwords.`
         }
         onBack={() => navigate('welcome')}
         footer={
@@ -49,7 +50,7 @@ export function SignInScreen() {
       >
         <div>
           <label htmlFor="identifier" className="mb-1 block font-bold">
-            Phone number or email
+            {SERVER_MODE ? 'Email' : 'Phone number or email'}
           </label>
           <input
             id="identifier"
@@ -68,7 +69,7 @@ export function SignInScreen() {
             aria-invalid={!!error}
             aria-describedby={error ? 'signin-error' : undefined}
             className="min-h-12 w-full rounded-2xl border-2 border-line bg-white px-4 text-lg focus:border-coral focus:outline-none"
-            placeholder="+91 98765 43210 or you@example.com"
+            placeholder={SERVER_MODE ? 'you@example.com' : '+91 98765 43210 or you@example.com'}
           />
         </div>
         {isNew && (

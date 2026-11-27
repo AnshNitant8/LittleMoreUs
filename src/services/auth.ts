@@ -163,20 +163,7 @@ export async function verifyOtp(input: { code: string; idempotencyKey: string })
     let user = findByIdentifier(db, pending.identifier)
     if (pending.mode === 'signup') {
       if (user) return err(409, 'There is already an account with this. You can log in instead.')
-      user = {
-        user_id: newId('usr'),
-        identifier: pending.identifier,
-        display_name: '',
-        parent_label: '',
-        age_band: null,
-        preferences: structuredClone(DEFAULT_PREFERENCES),
-        notification_prefs: structuredClone(DEFAULT_NOTIFICATION_PREFS),
-        is_18_confirmed: pending.is_18_confirmed,
-        deletion_requested_at: null,
-        created_at: nowIso(),
-        onboarding_complete: false,
-        invite_step_done: false,
-      }
+      user = newUserRecord(pending.identifier, pending.is_18_confirmed)
       db.users.push(user)
       track(db, 'signup_completed', { user_id: user.user_id })
     } else {
@@ -192,6 +179,24 @@ export async function verifyOtp(input: { code: string; idempotencyKey: string })
     session.user_id = user.user_id
     return { ok: true, data: structuredClone(user) }
   })
+}
+
+/** A brand-new account, before onboarding. */
+export function newUserRecord(identifier: string, is18Confirmed: boolean): User {
+  return {
+    user_id: newId('usr'),
+    identifier,
+    display_name: '',
+    parent_label: '',
+    age_band: null,
+    preferences: structuredClone(DEFAULT_PREFERENCES),
+    notification_prefs: structuredClone(DEFAULT_NOTIFICATION_PREFS),
+    is_18_confirmed: is18Confirmed,
+    deletion_requested_at: null,
+    created_at: nowIso(),
+    onboarding_complete: false,
+    invite_step_done: false,
+  }
 }
 
 export async function logout(input: { idempotencyKey: string }): Promise<Result<true>> {

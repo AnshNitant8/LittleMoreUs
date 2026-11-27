@@ -5,6 +5,7 @@ import { LoadingState } from '../../components/ui'
 import { useAction } from '../../hooks/useAction'
 import { useService } from '../../hooks/useService'
 import { cancelOtp, getOtpStatus, requestOtp, verifyOtp } from '../../services/api'
+import { SERVER_MODE } from '../../services/serverMode'
 
 export function OtpScreen() {
   const { navigate } = useRouter()
@@ -56,7 +57,7 @@ export function OtpScreen() {
     <form onSubmit={submit} noValidate>
       <OnboardingLayout
         title="Enter your code"
-        intro={<>We sent a 6-digit code to <strong className="text-ink">{status.identifier}</strong>. It works for 10 minutes.</>}
+        intro={<>We sent a 6-digit code to <strong className="text-ink">{status.identifier}</strong>.{SERVER_MODE ? ' Check your inbox, and your spam folder too.' : ' It works for 10 minutes.'}</>}
         onBack={async () => {
           await cancelOtp()
           navigate('signin')
@@ -86,9 +87,13 @@ export function OtpScreen() {
           aria-describedby="otp-hint"
           className="min-h-14 w-full rounded-2xl border-2 border-line bg-white px-4 text-center font-mono text-2xl tracking-[0.5em] focus:border-coral focus:outline-none"
         />
-        <p id="otp-hint" className="inline-block rounded-md border border-dashed border-proto bg-white px-2 py-1 font-mono text-xs text-proto">
-          Prototype: the code is always 123456
-        </p>
+        {SERVER_MODE ? (
+          <p id="otp-hint" className="text-sm text-ink-soft">The code is in the email we just sent.</p>
+        ) : (
+          <p id="otp-hint" className="inline-block rounded-md border border-dashed border-proto bg-white px-2 py-1 font-mono text-xs text-proto">
+            Prototype: the code is always 123456
+          </p>
+        )}
         {resent && <p role="status" className="text-sm text-ink-soft">A new code is on its way.</p>}
         <FieldError id="otp-error" message={error?.message} />
       </OnboardingLayout>

@@ -22,6 +22,8 @@ import {
   switchUser,
   updateFlags,
 } from '../services/api'
+import { getServerInfo } from '../services/remote/info'
+import { SERVER_MODE } from '../services/serverMode'
 import { formatDateTime } from '../utils/time'
 
 // Developer tooling for usability testing. Deliberately styled unlike the
@@ -39,10 +41,73 @@ const TAB_LABELS: Record<Tab, string> = {
 }
 
 export function PrototypeControls() {
-  const [open, setOpen] = useState(false)
-  const [tab, setTab] = useState<Tab>('session')
-  const panelRef = useRef<HTMLDivElement>(null)
+  return SERVER_MODE ? <ServerControls /> : <LocalControls />
+}
+
+/** Live app: only the admin sees this, with payments, reports, AI and analytics. */
+function ServerControls() {
+  const { state } = useService(getServerInfo)
+  if (state.status !== 'ready' || !state.data.is_admin) return null
+  return (
+    <ControlsShell title="Admin" subtitle="Only visible to the app admin" badge="⚙" tabs={['admin', 'ai', 'analytics', 'assumptions']}>
+      {(tab) => (
+        <>
+          {tab === 'ai' && <AiPanel />}
+          {tab === 'analytics' && <AnalyticsPanel />}
+          {tab === 'admin' && <AdminPanel />}
+          {tab === 'assumptions' && <AssumptionsPanel />}
+        </>
+      )}
+    </ControlsShell>
+  )
+}
+
+function LocalControls() {
   const { state } = useService(getPrototypeState)
+  const slot = state.status === 'ready' ? state.data.active_slot : 'A'
+  return (
+    <ControlsShell
+      title="Prototype Controls"
+      subtitle="Developer tools · not part of the parent experience"
+      badge={slot}
+      buttonLabel={`Open Prototype Controls. Active user: Partner ${slot}`}
+      tabs={Object.keys(TAB_LABELS) as Tab[]}
+    >
+      {(tab) => (
+        <>
+          {state.status === 'loading' && <p>Loading…</p>}
+          {state.status === 'error' && <p role="alert">Could not load prototype state: {state.error.message}</p>}
+          {state.status === 'ready' && (
+            <>
+              {!state.data.storage.persistent && (
+                <p className="mb-3 rounded bg-amber-200 p-2 text-amber-950" role="status">
+                  Browser storage is unavailable. Data lives in memory and will be lost on refresh.
+                </p>
+              )}
+              {state.data.storage.recoveredFromInvalid && (
+                <p className="mb-3 rounded bg-amber-200 p-2 text-amber-950" role="status">
+                  Stored data was unreadable, so the prototype started fresh.
+                </p>
+              )}
+              {tab === 'session' && <SessionPanel data={state.data} />}
+              {tab === 'flags' && <FlagsPanel flags={state.data.flags} />}
+              {tab === 'ai' && <AiPanel />}
+              {tab === 'inbox' && <InboxPanel slots={state.data.slot_users} />}
+              {tab === 'analytics' && <AnalyticsPanel />}
+              {tab === 'admin' && <AdminPanel />}
+              {tab === 'assumptions' && <AssumptionsPanel />}
+            </>
+          )}
+        </>
+      )}
+    </ControlsShell>
+  )
+}
+
+function ControlsShell(props: { title: string; subtitle: string; badge: string; buttonLabel?: string; tabs: Tab[]; children: (tab: Tab) => ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState<Tab>(props.tabs[0])
+  const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -52,18 +117,16 @@ export function PrototypeControls() {
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  const slot = state.status === 'ready' ? state.data.active_slot : 'A'
-
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={`Open Prototype Controls. Active user: Partner ${slot}`}
+        aria-label={props.buttonLabel ?? `Open ${props.title}`}
         className="fixed right-3 top-3 z-40 flex h-12 items-center gap-1.5 rounded-full border-2 border-proto-accent bg-proto px-3 font-mono text-xs font-bold text-proto-accent shadow-lg"
       >
         <GearIcon />
-        <span aria-hidden="true">{slot}</span>
+        <span aria-hidden="true">{props.badge}</span>
       </button>
 
       {open && (
@@ -73,15 +136,15 @@ export function PrototypeControls() {
             tabIndex={-1}
             role="dialog"
             aria-modal="true"
-            aria-label="Prototype Controls"
+            aria-label={props.title}
             onClick={(e) => e.stopPropagation()}
             className="flex h-full w-full max-w-md flex-col bg-proto font-mono text-sm text-slate-100 outline-none"
           >
             <div className="bg-[repeating-linear-gradient(45deg,#FACC15_0_10px,#1F2A44_10px_20px)] h-2" aria-hidden="true" />
             <div className="flex items-center justify-between px-4 py-3">
               <div>
-                <p className="text-xs uppercase tracking-widest text-proto-accent">Prototype Controls</p>
-                <p className="text-[11px] text-slate-400">Developer tools · not part of the parent experience</p>
+                <p className="text-xs uppercase tracking-widest text-proto-accent">{props.title}</p>
+                <p className="text-[11px] text-slate-400">{props.subtitle}</p>
                 <p className="text-[11px] text-slate-400">
                   Build <span className="text-proto-accent">{__BUILD_COMMIT__}</span> · {new Date(__BUILD_TIME__).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                 </p>
@@ -90,13 +153,13 @@ export function PrototypeControls() {
                 type="button"
                 onClick={() => setOpen(false)}
                 className="min-h-11 min-w-11 rounded-md border border-slate-500 px-3 text-slate-100"
-                aria-label="Close Prototype Controls"
+                aria-label={`Close ${props.title}`}
               >
                 ✕
               </button>
             </div>
-            <div role="tablist" aria-label="Prototype sections" className="flex flex-wrap gap-1 px-3 pb-2">
-              {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
+            <div role="tablist" aria-label={`${props.title} sections`} className="flex flex-wrap gap-1 px-3 pb-2">
+              {props.tabs.map((t) => (
                 <button
                   key={t}
                   role="tab"
@@ -109,29 +172,7 @@ export function PrototypeControls() {
               ))}
             </div>
             <div tabIndex={0} className="flex-1 overflow-y-auto px-4 pb-8" role="tabpanel" aria-label={TAB_LABELS[tab]}>
-              {state.status === 'loading' && <p>Loading…</p>}
-              {state.status === 'error' && <p role="alert">Could not load prototype state: {state.error.message}</p>}
-              {state.status === 'ready' && (
-                <>
-                  {!state.data.storage.persistent && (
-                    <p className="mb-3 rounded bg-amber-200 p-2 text-amber-950" role="status">
-                      Browser storage is unavailable. Data lives in memory and will be lost on refresh.
-                    </p>
-                  )}
-                  {state.data.storage.recoveredFromInvalid && (
-                    <p className="mb-3 rounded bg-amber-200 p-2 text-amber-950" role="status">
-                      Stored data was unreadable, so the prototype started fresh.
-                    </p>
-                  )}
-                  {tab === 'session' && <SessionPanel data={state.data} />}
-                  {tab === 'flags' && <FlagsPanel flags={state.data.flags} />}
-                  {tab === 'ai' && <AiPanel />}
-                  {tab === 'inbox' && <InboxPanel slots={state.data.slot_users} />}
-                  {tab === 'analytics' && <AnalyticsPanel />}
-                  {tab === 'admin' && <AdminPanel />}
-                  {tab === 'assumptions' && <AssumptionsPanel />}
-                </>
-              )}
+              {props.children(tab)}
             </div>
           </div>
         </div>

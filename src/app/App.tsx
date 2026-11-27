@@ -26,6 +26,8 @@ import { RouterProvider, useRouter } from './router'
 import { StartGameScreen } from '../screens/moments/GameScreen'
 import { DeleteAccountScreen, RecoverAccountScreen } from '../screens/account/AccountScreens'
 import { UnlockScreen } from '../screens/storybook/UnlockScreen'
+import { SERVER_MODE } from '../services/serverMode'
+import { startLiveRefresh } from '../services/remote/client'
 
 function Shell() {
   const { state } = useService(getPrototypeState)
@@ -115,6 +117,7 @@ function SlotView() {
 export default function App() {
   const [boot, setBoot] = useState<'loading' | 'ready' | 'error'>('loading')
   useEffect(() => {
+    if (SERVER_MODE) startLiveRefresh()
     // Scheduled jobs run on every application load.
     void runScheduledJobs().then((r) => {
       setBoot(r.ok ? 'ready' : 'error')
@@ -127,7 +130,7 @@ export default function App() {
   if (boot === 'error')
     return (
       <div className="mx-auto max-w-[430px] px-4 pt-10">
-        <ErrorState message="The prototype could not start. Try refreshing the page." onRetry={() => window.location.reload()} />
+        <ErrorState message={SERVER_MODE ? "The app couldn't reach the server. Check your connection and try again." : 'The prototype could not start. Try refreshing the page.'} onRetry={() => window.location.reload()} />
       </div>
     )
   return (

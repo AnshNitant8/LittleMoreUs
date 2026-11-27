@@ -123,6 +123,21 @@ export function idemKey(action: string): string {
   return `${action}:${newId('k')}`
 }
 
+// ---------- Work that finishes after a reply ----------
+
+let deferHook: ((work: Promise<unknown>) => void) | null = null
+
+/** The server collects deferred work and finishes it before saving; the browser lets it run. */
+export function setDeferHook(hook: ((work: Promise<unknown>) => void) | null) {
+  deferHook = hook
+}
+
+/** Start work (e.g. story generation) without making the caller wait for it. */
+export function defer(work: () => Promise<unknown>) {
+  const p = work().catch(() => undefined)
+  deferHook?.(p)
+}
+
 // ---------- Analytics (metadata only) ----------
 
 type AnalyticsValue = string | number | boolean | null

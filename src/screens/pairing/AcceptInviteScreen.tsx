@@ -6,6 +6,7 @@ import { LoadingState } from '../../components/ui'
 import { useAction } from '../../hooks/useAction'
 import { useService } from '../../hooks/useService'
 import { acceptInvitation, declineInvitation, forgetInvite, getInvitation, rememberInvite } from '../../services/api'
+import { SERVER_MODE } from '../../services/serverMode'
 
 /** Screen 07: accept or decline a partner's invitation. */
 export function AcceptInviteScreen({ token, signedIn }: { token: string; signedIn: boolean }) {
@@ -46,7 +47,7 @@ export function AcceptInviteScreen({ token, signedIn }: { token: string; signedI
     return (
       <OnboardingLayout title="This invitation can't be used here" footer={<button type="button" className="btn-primary" onClick={leave}>OK</button>}>
         <p className="card">{copy}</p>
-        {inv.problem === 'own_invitation' && (
+        {inv.problem === 'own_invitation' && !SERVER_MODE && (
           <p className="inline-block rounded-md border border-dashed border-proto bg-white px-2 py-1 font-mono text-xs text-proto">
             Prototype: switch to the other partner in Prototype Controls to accept.
           </p>
@@ -77,7 +78,7 @@ export function AcceptInviteScreen({ token, signedIn }: { token: string; signedI
           ) : (
             <>
               <button type="button" className="btn-primary" onClick={() => navigate('signin')}>
-                Continue with phone or email
+                {SERVER_MODE ? 'Continue with email' : 'Continue with phone or email'}
               </button>
               <p className="text-center text-sm text-ink-soft">New or returning, it's the same step. We'll create your account if you don't have one.</p>
             </>

@@ -221,7 +221,22 @@ export function storageStatus() {
   return { persistent: adapter.persistent, recoveredFromInvalid }
 }
 
+/**
+ * On the server each request works on its own copy of the caller's data, so
+ * two requests can never see each other's draft. The server sets a resolver
+ * (backed by AsyncLocalStorage); in the browser there is none.
+ */
+export interface StoreContext {
+  db: Db
+}
+let contextResolver: (() => StoreContext | undefined) | null = null
+export function setStoreContextResolver(resolver: (() => StoreContext | undefined) | null) {
+  contextResolver = resolver
+}
+
 export function readDb(): Db {
+  const ctx = contextResolver?.()
+  if (ctx) return ctx.db
   if (!cache) {
     const { db, recovered } = parseDb(adapter.read())
     cache = db
@@ -236,6 +251,13 @@ export function readDb(): Db {
  * atomic: either everything is saved or nothing is.
  */
 export function transact<T>(fn: (draft: Db) => T): T {
+  const ctx = contextResolver?.()
+  if (ctx) {
+    const draft = structuredClone(ctx.db)
+    const result = fn(draft)
+    ctx.db = draft
+    return result
+  }
   const draft = structuredClone(readDb())
   const result = fn(draft)
   cache = draft
@@ -248,6 +270,11 @@ export function resetDb() {
   adapter.clear()
   cache = createEmptyDb()
   adapter.write(JSON.stringify(cache))
+  listeners.forEach((l) => l())
+}
+
+/** Tell screens to reload (server mode uses this after each change). */
+export function emitChange() {
   listeners.forEach((l) => l())
 }
 
