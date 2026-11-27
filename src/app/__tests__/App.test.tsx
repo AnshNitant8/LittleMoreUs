@@ -73,6 +73,10 @@ describe('full onboarding flow', () => {
     await u.click(screen.getByLabelText('A mix'))
     await u.click(screen.getByRole('button', { name: 'Continue' }))
 
+    // Invite partner: skip for now
+    expect(await screen.findByRole('heading', { name: 'Invite your partner' })).toBeInTheDocument()
+    await u.click(screen.getByRole('button', { name: 'Skip for now' }))
+
     // Notifications
     expect(await screen.findByRole('heading', { name: 'Gentle notifications' })).toBeInTheDocument()
     await u.click(screen.getByRole('switch', { name: /Pending reminders/ }))
@@ -80,5 +84,10 @@ describe('full onboarding flow', () => {
 
     expect(await screen.findByText('Hello, Priya')).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
+    // Unpaired Home: invitation card and read-only sample moment
+    expect(screen.getByRole('heading', { name: 'Invite your partner' })).toBeInTheDocument()
+    expect(screen.getByText(/What's a small moment from before the baby/)).toBeInTheDocument()
+    expect(screen.getByText('Sample')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 })

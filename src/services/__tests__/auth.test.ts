@@ -8,6 +8,7 @@ import {
   logout,
   normaliseIdentifier,
   requestOtp,
+  skipInviteStep,
   switchUser,
   updateMe,
   updatePreferences,
@@ -149,6 +150,8 @@ describe('onboarding and profile', () => {
     expect(await step()).toBe('moments')
     expect((await updatePreferences({ categories: [], idempotencyKey: k() })).ok).toBe(false)
     await updatePreferences({ categories: ['remember_us', 'lets_play'], depth: 'mix', idempotencyKey: k() })
+    expect(await step()).toBe('invite')
+    await skipInviteStep({ idempotencyKey: k() })
     expect(await step()).toBe('notifications')
     const prefs = await getPreferences()
     expect(prefs.ok && prefs.data.notification_prefs.toggles.app_suggestions).toBe(true)

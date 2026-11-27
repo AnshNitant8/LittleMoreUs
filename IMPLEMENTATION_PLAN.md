@@ -17,8 +17,18 @@ Built in seven reviewable stages (spec Section 1). A stage is ticked only after
   preferences (≥1 category + depth), notification window/quiet hours/toggles,
   logout. Service: requestOtp, verifyOtp, logout, getMe, updateMe,
   getPreferences, updatePreferences.
-- [ ] **Stage 3: Pairing.** Invitations, accept/decline, couple creation,
-  unpaired state with sample moment.
+- [x] **Stage 3: Pairing.** Invite step in onboarding (Skip for now) and from
+  Home; one-time expiring links with Copy, WhatsApp (wa.me), Cancel,
+  Regenerate (old token invalid) and status; prototype "Open as partner";
+  Accept screen with token validation (exists, unexpired, unused, not own,
+  not already paired), sign-in/create-account path that keeps the token,
+  Decline; couple created only on acceptance with inviter timezone and age
+  band; invitee onboarding with prefilled stage; partner label hidden until
+  set; unpaired Home invitation card and read-only Sample moment; couple
+  timezone (once per 24h) and household age band with neutral partner
+  notice. Service: createInvitation, getInvitation, acceptInvitation,
+  declineInvitation, cancelInvitation, getCouple, updateCouple.
+  `disconnectCouple` arrives in Stage 7 with pause/disconnect/delete.
 - [ ] **Stage 4: Connection Moments.** Question selection, Explore, drafts,
   consent, atomic interaction creation, waiting states, withdraw, decline,
   expiry, daily cap, reminders, scheduled jobs.
@@ -43,3 +53,14 @@ Built in seven reviewable stages (spec Section 1). A stage is ticked only after
 - Browser (Chromium, 390×844): sign-up with phone, OTP, all four onboarding
   steps, reload keeps session, Profile → Log out returns to Welcome. No
   console errors, no horizontal scroll, no visible targets under 44px.
+
+## Stage 3 checks
+- Type check: pass. Build: pass. Tests: 43/43 pass (12 new pairing tests:
+  regenerate, cancel, rate limit, expiry via clock, own/unknown token,
+  decline, couple creation, invitee onboarding and age-band notice,
+  partner-label visibility, timezone cooldown, pairing required).
+- Browser (Chromium, 390×844): A signs up → invite step → link, copy,
+  WhatsApp URL, regenerate → Open as partner → B creates account → Accept →
+  B onboarding (stage prefilled, 4 steps) → B Home shows partner; old link
+  shows the friendly expired message; A finishes onboarding and Profile
+  shows Anika and her label. No console errors, no horizontal scroll.

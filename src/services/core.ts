@@ -263,3 +263,14 @@ export async function resetAllPrototypeData(): Promise<Result<true>> {
   await runScheduledJobs()
   return { ok: true, data: true }
 }
+
+// ---------- Couple helpers ----------
+
+/** The couple a user is currently paired in, if any. */
+export function activeCoupleOf(db: Db, userId: string) {
+  return db.couples.find((c) => c.state === 'paired' && c.member_user_ids.includes(userId)) ?? null
+}
+
+export function partnerIdOf(couple: { member_user_ids: [string, string] }, userId: string): string {
+  return couple.member_user_ids[0] === userId ? couple.member_user_ids[1] : couple.member_user_ids[0]
+}

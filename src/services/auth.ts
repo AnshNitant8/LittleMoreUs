@@ -165,6 +165,7 @@ export async function verifyOtp(input: { code: string; idempotencyKey: string })
         deletion_requested_at: null,
         created_at: nowIso(),
         onboarding_complete: false,
+        invite_step_done: false,
       }
       db.users.push(user)
       track(db, 'signup_completed', { user_id: user.user_id })
@@ -190,6 +191,7 @@ export async function logout(input: { idempotencyKey: string }): Promise<Result<
     track(db, 'logout', { user_id: s.user_id })
     s.user_id = null
     s.otp = null
+    s.pending_invite = null
     return true as const
   })
 }

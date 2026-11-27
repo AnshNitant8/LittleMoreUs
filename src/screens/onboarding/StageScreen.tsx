@@ -5,13 +5,30 @@ import { AGE_BANDS, type AgeBand, type User } from '../../domain/types'
 import { useAction } from '../../hooks/useAction'
 import { updateMe } from '../../services/api'
 
-export function StageScreen({ user, step, total, onDone }: { user: User; step: number; total: number; onDone: () => void }) {
-  const [band, setBand] = useState<AgeBand | null>(user.age_band)
+export function StageScreen({
+  user,
+  step,
+  total,
+  onDone,
+  householdAgeBand = null,
+}: {
+  user: User
+  step: number
+  total: number
+  onDone: () => void
+  householdAgeBand?: AgeBand | null
+}) {
+  // An invitee sees the household stage prefilled from their partner and may change it.
+  const [band, setBand] = useState<AgeBand | null>(user.age_band ?? householdAgeBand)
   const save = useAction('set-age-band', (key) => updateMe({ age_band: band!, idempotencyKey: key }))
   return (
     <OnboardingLayout
       title="Where are you in parenthood?"
-      intro="This helps us pick moments that fit. We never ask for your baby's name or birthday."
+      intro={
+        householdAgeBand && !user.age_band
+          ? 'Your partner chose this. Change it if it doesn\'t fit. We never ask for your baby\'s name or birthday.'
+          : "This helps us pick moments that fit. We never ask for your baby's name or birthday."
+      }
       step={step}
       total={total}
       footer={

@@ -56,7 +56,7 @@ export interface Db {
 }
 
 export function emptySlot(): SlotSession {
-  return { user_id: null, otp: null, drafts: {} }
+  return { user_id: null, otp: null, drafts: {}, pending_invite: null }
 }
 
 export function createEmptyDb(): Db {

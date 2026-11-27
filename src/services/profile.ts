@@ -14,28 +14,40 @@ import {
   type Result,
   type User,
 } from '../domain/types'
-import { currentUser, fail, mutate, query, requireUser, track } from './core'
+import { activeCoupleOf, activeSession, currentUser, fail, mutate, query, requireUser, track } from './core'
+import { coupleViewFor, setHouseholdAgeBand, type CoupleView } from './pairing'
 
-export type OnboardingStep = 'stage' | 'family' | 'moments' | 'notifications' | 'done'
+export type OnboardingStep = 'stage' | 'family' | 'moments' | 'invite' | 'notifications' | 'done'
 
 export interface Session {
   user: User | null
   onboarding_step: OnboardingStep | null
+  couple: CoupleView | null
+  /** Invite token opened on this device and not yet answered. */
+  pending_invite: string | null
 }
 
 /** Next onboarding screen for a user, derived from what they have filled in. */
-export function onboardingStep(u: User): OnboardingStep {
+export function onboardingStep(u: User, paired: boolean): OnboardingStep {
   if (u.onboarding_complete) return 'done'
+  // For an invitee, user.age_band records that they confirmed the household band.
   if (!u.age_band) return 'stage'
   if (!u.display_name || !u.parent_label) return 'family'
   if (u.preferences.categories.length === 0 || !u.preferences.depth) return 'moments'
+  if (!paired && !u.invite_step_done) return 'invite'
   return 'notifications'
 }
 
 export async function getSession(): Promise<Result<Session>> {
   return query((db) => {
     const u = currentUser(db)
-    return { user: u ? structuredClone(u) : null, onboarding_step: u ? onboardingStep(u) : null }
+    const couple = u ? coupleViewFor(db, u.user_id) : null
+    return {
+      user: u ? structuredClone(u) : null,
+      onboarding_step: u ? onboardingStep(u, !!couple) : null,
+      couple,
+      pending_invite: activeSession(db).pending_invite,
+    }
   })
 }
 
@@ -81,11 +93,13 @@ export async function updateMe(input: UpdateMeInput): Promise<Result<User>> {
     if (input.parent_label !== undefined) u.parent_label = validateParentLabel(input.parent_label)
     if (input.age_band !== undefined) {
       if (!AGE_BANDS.includes(input.age_band)) fail(400, 'Please choose a parenthood stage.')
-      // Pre-pairing the age band lives on the user. Household age band arrives with pairing (Stage 3).
+      // Before pairing the age band lives on the user; after pairing it is household-level.
       u.age_band = input.age_band
+      const couple = activeCoupleOf(db, u.user_id)
+      if (couple) setHouseholdAgeBand(db, couple, u.user_id, input.age_band)
     }
     if (input.onboarding_complete) {
-      if (onboardingStep(u) !== 'notifications') fail(400, 'Please finish the earlier steps first.')
+      if (onboardingStep(u, !!activeCoupleOf(db, u.user_id)) !== 'notifications') fail(400, 'Please finish the earlier steps first.')
       u.onboarding_complete = true
       track(db, 'onboarding_completed', { user_id: u.user_id })
     }

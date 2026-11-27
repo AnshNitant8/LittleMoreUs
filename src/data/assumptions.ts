@@ -95,4 +95,38 @@ export const ASSUMPTIONS: Assumption[] = [
     topic: 'Terms and Privacy',
     text: 'Terms and Privacy pages hold short prototype placeholder text, not legal documents.',
   },
+  {
+    stage: 3,
+    topic: 'Invitations',
+    text:
+      'Each person has at most one live invite link; making a new one cancels the old one. Links expire after invite_expiry_days (default 7). As a prototype rate limit, a person can create at most 10 invitations in 24 hours. Pairing accepted or declined shows as a status on the inviter’s invite card and screen, not as a notification.',
+  },
+  {
+    stage: 3,
+    topic: 'Invite links on one device',
+    text:
+      'Invite links are hash URLs (#/invite/<token>) on the same browser. The token opened on a device is remembered through sign-up or log-in until it is accepted or declined. "Open as partner" switches to the other simulated device and opens the link there.',
+  },
+  {
+    stage: 3,
+    topic: 'Declining without an account',
+    text: 'An invitation can be declined without signing in. The inviter sees a neutral "Declined" status.',
+  },
+  {
+    stage: 3,
+    topic: 'Couple defaults',
+    text:
+      'The couple timezone is the inviter’s browser timezone when the link was made. The household age band is copied from the inviter. The invitee confirms or changes it in their own onboarding, and any change sends the other partner one neutral in-app notice.',
+  },
+  {
+    stage: 3,
+    topic: 'Who can join whom',
+    text:
+      'You cannot accept your own link, accept while already paired, or join an inviter who has since paired with someone else. When a couple forms, any other open links from either person are cancelled.',
+  },
+  {
+    stage: 3,
+    topic: 'Sample story',
+    text: 'The unpaired sample moment uses a pre-written story with the labels Mama and Papa, clearly marked Sample. It is static example text, not generated.',
+  },
 ]

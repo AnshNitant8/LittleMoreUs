@@ -110,6 +110,8 @@ export interface User {
   created_at: ISODate
   /** Which onboarding steps are complete (prototype bookkeeping). */
   onboarding_complete: boolean
+  /** True once the user has seen the invite-partner onboarding step (sent or skipped). */
+  invite_step_done: boolean
 }
 
 export interface Couple {
@@ -131,6 +133,8 @@ export interface Invitation {
   created_at: ISODate
   expires_at: ISODate
   responded_by: UserId | null
+  /** Inviter's browser timezone, used as the couple's default timezone. */
+  timezone: string
 }
 
 export interface GameOption {
@@ -320,6 +324,8 @@ export interface SlotSession {
   otp: { identifier: string; mode: 'signup' | 'login'; is_18_confirmed: boolean } | null
   /** Local-only drafts, keyed by question/interaction. Never visible to the partner. */
   drafts: Record<string, string>
+  /** Invite token opened on this device, kept through sign-in until accepted or declined. */
+  pending_invite: string | null
 }
 
 // ---------- Service results ----------

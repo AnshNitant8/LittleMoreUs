@@ -4,3 +4,4 @@
 export * from './core'
 export * from './auth'
 export * from './profile'
+export * from './pairing'

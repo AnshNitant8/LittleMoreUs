@@ -14,6 +14,8 @@ import { OtpScreen } from '../screens/auth/OtpScreen'
 import { SignInScreen } from '../screens/auth/SignInScreen'
 import { WelcomeScreen } from '../screens/auth/WelcomeScreen'
 import { OnboardingFlow } from '../screens/onboarding/OnboardingFlow'
+import { AcceptInviteScreen } from '../screens/pairing/AcceptInviteScreen'
+import { InvitePartnerScreen } from '../screens/pairing/InvitePartnerScreen'
 import { RouterProvider, useRouter } from './router'
 
 function Shell() {
@@ -42,13 +44,18 @@ function SlotView() {
   if (state.status === 'loading') return <div className="px-4"><LoadingState /></div>
   if (state.status === 'error') return <div className="px-4 pt-10"><ErrorState message={state.error.message} onRetry={reload} /></div>
 
-  const { user, onboarding_step } = state.data
+  const { user, onboarding_step, couple, pending_invite } = state.data
+  // Screen 07: an invite link, or an invite opened before signing in.
+  if (route.name === 'invite' && route.param) return <AcceptInviteScreen key={route.param} token={route.param} signedIn={!!user} />
+  if (user && pending_invite && !couple) return <AcceptInviteScreen key={pending_invite} token={pending_invite} signedIn />
   if (!user) {
     if (route.name === 'signin') return <SignInScreen key={route.param} mode={route.param === 'login' ? 'login' : 'signup'} />
     if (route.name === 'otp') return <OtpScreen />
     return <WelcomeScreen />
   }
-  if (onboarding_step && onboarding_step !== 'done') return <OnboardingFlow user={user} step={onboarding_step} />
+  if (onboarding_step && onboarding_step !== 'done') return (
+      <OnboardingFlow user={user} step={onboarding_step} paired={!!couple} householdAgeBand={couple?.age_band ?? null} />
+    )
 
   let screen
   switch (route.name) {
@@ -61,8 +68,12 @@ function SlotView() {
     case 'profile':
       screen = <ProfileScreen />
       break
+    case 'invite-partner':
+      if (!couple) return <InvitePartnerScreen />
+      screen = <HomeScreen name={user.display_name} couple={couple} />
+      break
     default:
-      screen = <HomeScreen name={user.display_name} />
+      screen = <HomeScreen name={user.display_name} couple={couple} />
   }
   return (
     <>
