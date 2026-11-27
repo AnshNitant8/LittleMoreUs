@@ -11,6 +11,7 @@ import {
   getSession,
   idemKey,
   listNotifications,
+  rememberInvite,
   requestOtp,
   switchUser,
   updateCouple,
@@ -51,6 +52,19 @@ describe('invitations', () => {
     const mine = await getMyInvitation()
     expect(mine.ok && mine.data?.token).toBe(t2)
     expect(readDb().couples).toHaveLength(0) // no couple until accepted
+  })
+
+  it('keeps the invite when the invitee tries to log in with no account, then signs up and accepts', async () => {
+    await signUp('a@x.com', 'Priya', 'Mama')
+    const t = await invite()
+    await switchUser('B')
+    await rememberInvite(t)
+    const login = await requestOtp({ identifier: 'dolly@x.com', mode: 'login', idempotencyKey: k() })
+    expect(!login.ok && login.error.code).toBe(404)
+    await signUp('dolly@x.com', '', '', null)
+    const s = await getSession()
+    expect(s.ok && s.data.pending_invite).toBe(t)
+    expect((await acceptInvitation({ token: t, idempotencyKey: k() })).ok).toBe(true)
   })
 
   it('cancel makes the link unusable', async () => {

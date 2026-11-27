@@ -91,3 +91,24 @@ describe('full onboarding flow', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 })
+
+describe('sign in with no account yet', () => {
+  it('moves straight to creating an account, keeping what was typed and the 18+ tick', async () => {
+    const u = userEvent.setup()
+    render(<App />)
+    await u.click(await screen.findByRole('button', { name: 'I already have an account' }))
+    expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument()
+    await u.type(screen.getByLabelText('Phone number or email'), 'dolly@example.com')
+    await u.click(screen.getByRole('button', { name: 'Send my code' }))
+
+    expect(await screen.findByRole('heading', { name: 'Create your account' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Phone number or email')).toHaveValue('dolly@example.com')
+    expect(screen.getByRole('status')).toHaveTextContent(/no account with dolly@example.com yet/)
+    expect(screen.queryByText(/couldn't find an account/)).not.toBeInTheDocument()
+    const send = screen.getByRole('button', { name: 'Send my code' })
+    expect(send).toBeDisabled()
+    await u.click(screen.getByLabelText('I am 18 or older'))
+    await u.click(send)
+    expect(await screen.findByLabelText('6-digit code')).toBeInTheDocument()
+  })
+})

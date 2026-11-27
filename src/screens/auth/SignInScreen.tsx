@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useRouter } from '../../app/router'
 import { FieldError, OnboardingLayout } from '../../components/Onboarding'
 import { useAction } from '../../hooks/useAction'
@@ -6,22 +6,37 @@ import { requestOtp } from '../../services/api'
 
 export function SignInScreen({ mode }: { mode: 'signup' | 'login' }) {
   const { navigate } = useRouter()
+  // The typed phone number or email survives switching between log in and sign up.
   const [identifier, setIdentifier] = useState('')
   const [adult, setAdult] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const { run, busy, error, setError } = useAction('request-otp', (key) =>
     requestOtp({ identifier, mode, is_18_confirmed: adult, idempotencyKey: key }),
   )
   const isSignup = mode === 'signup'
   const canSubmit = identifier.trim().length > 0 && (!isSignup || adult) && !busy
 
+  useEffect(() => {
+    setError(null)
+    setAdult(false)
+  }, [mode, setError])
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    setNotice(null)
     const res = await run()
-    if (res?.ok) navigate('otp')
+    if (res?.ok) return navigate('otp')
+    // No account yet: go straight to creating one with what they typed.
+    // The 18+ tick and the Terms still apply, and a pending invite stays on this device.
+    if (res && !res.ok && res.error.code === 404 && !isSignup) {
+      setNotice(`There's no account with ${identifier.trim()} yet, so let's create one. Confirm you're 18 or older, then we'll send your code.`)
+      navigate('signin', 'signup')
+    }
   }
 
   const switchMode = () => {
     setError(null)
+    setNotice(null)
     navigate('signin', isSignup ? 'login' : 'signup')
   }
 
@@ -58,6 +73,9 @@ export function SignInScreen({ mode }: { mode: 'signup' | 'login' }) {
             placeholder="+91 98765 43210 or you@example.com"
           />
         </div>
+        {notice && isSignup && (
+          <p role="status" className="card text-sm">{notice}</p>
+        )}
         {isSignup && (
           <label className="flex min-h-11 cursor-pointer items-start gap-3">
             <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} className="mt-1 h-6 w-6 accent-coral" />
