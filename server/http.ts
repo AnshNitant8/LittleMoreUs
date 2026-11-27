@@ -1,6 +1,7 @@
 // Node request handler for /api/rpc and /api/cron, used by Vercel and by the
 // local dev server alike.
 
+import { createHash } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import * as api from '../src/services/api.local'
 import { setAiClient, createGeminiClient, probeGemini } from '../src/services/gemini'
@@ -90,6 +91,8 @@ async function health(res: ServerResponse, cfg: ServerConfig, gemini = false) {
     mode: 'server',
     database,
     gemini_key: !!cfg.geminiKey,
+    // A short fingerprint, to tell which key is set without showing it.
+    gemini_key_id: cfg.geminiKey ? createHash('sha256').update(cfg.geminiKey).digest('hex').slice(0, 8) : null,
     admin_set: cfg.adminEmails.length > 0,
     build: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
     region: process.env.VERCEL_REGION ?? null,
