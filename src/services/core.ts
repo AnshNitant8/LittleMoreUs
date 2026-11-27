@@ -20,14 +20,14 @@ import { newId } from '../utils/id'
 /** Thrown inside a transaction to abort it; converted to a Result by `run`. */
 export class ApiFailure extends Error {
   readonly error: ApiError
-  constructor(code: ApiError['code'], message: string) {
+  constructor(code: ApiError['code'], message: string, extra: Partial<ApiError> = {}) {
     super(message)
-    this.error = { code, message }
+    this.error = { code, message, ...extra }
   }
 }
 
-export const fail = (code: ApiError['code'], message: string): never => {
-  throw new ApiFailure(code, message)
+export const fail = (code: ApiError['code'], message: string, extra: Partial<ApiError> = {}): never => {
+  throw new ApiFailure(code, message, extra)
 }
 
 function toResult<T>(fn: () => T): Result<T> {
@@ -165,6 +165,7 @@ export interface PrototypeState {
   now: string
   flags: FeatureFlags
   storage: { persistent: boolean; recoveredFromInvalid: boolean }
+  simulate_offline: boolean
 }
 
 export async function getPrototypeState(): Promise<Result<PrototypeState>> {
@@ -179,6 +180,7 @@ export async function getPrototypeState(): Promise<Result<PrototypeState>> {
       now: nowIso(),
       flags: { ...db.flags },
       storage: storageStatus(),
+      simulate_offline: db.simulate_offline,
     }
   })
 }
@@ -273,4 +275,20 @@ export function activeCoupleOf(db: Db, userId: string) {
 
 export function partnerIdOf(couple: { member_user_ids: [string, string] }, userId: string): string {
   return couple.member_user_ids[0] === userId ? couple.member_user_ids[1] : couple.member_user_ids[0]
+}
+
+// ---------- Simulated network ----------
+
+export function isOffline(db: Db): boolean {
+  return db.simulate_offline || (typeof navigator !== 'undefined' && navigator.onLine === false)
+}
+
+export async function setSimulatedOffline(offline: boolean): Promise<Result<boolean>> {
+  await tick()
+  return toResult(() =>
+    transact((db) => {
+      db.simulate_offline = offline
+      return offline
+    }),
+  )
 }

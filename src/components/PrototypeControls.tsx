@@ -10,6 +10,7 @@ import {
   listNotifications,
   markNotificationsRead,
   resetAllPrototypeData,
+  setSimulatedOffline,
   switchUser,
   updateFlags,
 } from '../services/api'
@@ -165,7 +166,13 @@ function SessionPanel({ data }: { data: PrototypeState }) {
                 type="button"
                 disabled={busy}
                 aria-pressed={active}
-                onClick={() => run(() => switchUser(s))}
+                onClick={() =>
+                  run(async () => {
+                    await switchUser(s)
+                    // Picking up the other phone starts on its Home screen.
+                    window.location.hash = '#/home'
+                  })
+                }
                 className={`min-h-16 rounded-md border-2 p-2 text-left ${active ? 'border-proto-accent bg-slate-600' : 'border-slate-600 bg-slate-800'}`}
               >
                 <span className="block font-bold">
@@ -193,6 +200,12 @@ function SessionPanel({ data }: { data: PrototypeState }) {
             </button>
           ))}
         </div>
+      </Section>
+      <Section title="Network">
+        <label className="flex min-h-11 items-center justify-between gap-2">
+          <span>Simulate offline (answers queue and retry)</span>
+          <input type="checkbox" className="h-6 w-6" checked={data.simulate_offline} onChange={(e) => run(() => setSimulatedOffline(e.target.checked))} />
+        </label>
       </Section>
       <Section title="Reset">
         {!confirmReset ? (

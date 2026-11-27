@@ -8,7 +8,12 @@ import { ExploreScreen } from '../screens/ExploreScreen'
 import { HomeScreen } from '../screens/HomeScreen'
 import { ProfileScreen } from '../screens/ProfileScreen'
 import { StorybookScreen } from '../screens/StorybookScreen'
-import { getPrototypeState, getSession, runScheduledJobs } from '../services/api'
+import { getPrototypeState, getSession, resumeGeneration, runScheduledJobs } from '../services/api'
+import { AnswerScreen } from '../screens/moments/AnswerScreen'
+import { AskScreen } from '../screens/moments/AskScreen'
+import { StoryScreen } from '../screens/moments/StoryScreen'
+import { WaitingScreen } from '../screens/moments/WaitingScreen'
+import { CATEGORY_IDS, type CategoryId } from '../domain/types'
 import { LegalScreen } from '../screens/auth/LegalScreen'
 import { OtpScreen } from '../screens/auth/OtpScreen'
 import { SignInScreen } from '../screens/auth/SignInScreen'
@@ -57,10 +62,21 @@ function SlotView() {
       <OnboardingFlow user={user} step={onboarding_step} paired={!!couple} householdAgeBand={couple?.age_band ?? null} />
     )
 
+  // Full-screen moment flows (no bottom nav: one primary action per screen).
+  if (couple && route.param) {
+    if (route.name === 'ask') {
+      const cat = CATEGORY_IDS.includes(route.param as CategoryId) ? (route.param as CategoryId) : null
+      return <AskScreen key={route.param} category={cat} />
+    }
+    if (route.name === 'answer') return <AnswerScreen key={route.param} interactionId={route.param} />
+    if (route.name === 'waiting') return <WaitingScreen key={route.param} interactionId={route.param} />
+    if (route.name === 'story') return <StoryScreen key={route.param} storyId={route.param} />
+  }
+
   let screen
   switch (route.name) {
     case 'explore':
-      screen = <ExploreScreen />
+      screen = <ExploreScreen paired={!!couple} />
       break
     case 'storybook':
       screen = <StorybookScreen />
@@ -87,7 +103,11 @@ export default function App() {
   const [boot, setBoot] = useState<'loading' | 'ready' | 'error'>('loading')
   useEffect(() => {
     // Scheduled jobs run on every application load.
-    void runScheduledJobs().then((r) => setBoot(r.ok ? 'ready' : 'error'))
+    void runScheduledJobs().then((r) => {
+      setBoot(r.ok ? 'ready' : 'error')
+      // Finish any story whose generation was interrupted when the app closed.
+      if (r.ok) void resumeGeneration()
+    })
   }, [])
 
   if (boot === 'loading') return <div className="mx-auto max-w-[430px] px-4"><LoadingState label="Getting things ready" /></div>

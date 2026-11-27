@@ -29,9 +29,19 @@ Built in seven reviewable stages (spec Section 1). A stage is ticked only after
   notice. Service: createInvitation, getInvitation, acceptInvitation,
   declineInvitation, cancelInvitation, getCouple, updateCouple.
   `disconnectCouple` arrives in Stage 7 with pause/disconnect/delete.
-- [ ] **Stage 4: Connection Moments.** Question selection, Explore, drafts,
-  consent, atomic interaction creation, waiting states, withdraw, decline,
-  expiry, daily cap, reminders, scheduled jobs.
+- [x] **Stage 4: Connection Moments.** Seed library (21 paired + 3 game
+  questions, verbatim), deterministic selection (filters 1–8, no
+  back-to-back high intensity, category rotation, editorial order), skips
+  (5/category/day, no cap impact), device-local drafts, consent, atomic
+  createInteraction with frozen snapshot + counter + one partner
+  notification, duplicate-question redirect, daily cap with replies still
+  open, optional pacing label, respond / decline / withdraw (both roles),
+  expiry, one reminder deferred into the notification window, raw-answer
+  purge 24h after generation, app suggestions, offline queue with
+  idempotent retry. Screens: paired Home (featured, Waiting for you, On
+  their way, New stories), Explore (new-dot, explored-all, cap message),
+  Question/Answer for both roles, Waiting (all states), core Story view.
+  Story text is the neutral fallback until Stage 5.
 - [ ] **Stage 5: AI stories and safety.** Gemini story generation, validation,
   retry, fallback, distress checks, private support card.
 - [ ] **Stage 6: Storybook and payments.** Saved/recent stories, locked
@@ -64,3 +74,21 @@ Built in seven reviewable stages (spec Section 1). A stage is ticked only after
   B onboarding (stage prefilled, 4 steps) → B Home shows partner; old link
   shows the friendly expired message; A finishes onboarding and Profile
   shows Anika and her label. No console errors, no horizontal scroll.
+
+## Stage 4 checks
+- Type check: pass. Build: pass. Tests: 69/69 pass (26 new: no moment before
+  pairing; nothing created before submit; one generic partner notification;
+  identical frozen wording and no raw-text leak; consent/empty/500 limits;
+  idempotent and offline retry; duplicate redirect; drafts per device;
+  story + story-ready to first responder only + 24h purge + topic retired;
+  decline; expiry at +7 days; initiator and partner withdraw; one reminder,
+  deferred out of quiet hours; cap 4th refused with replies allowed and
+  next-day reset; withdrawn counts on creation day; pacing label flags;
+  skip limit; depth, high-intensity spacing, muting, "other" band,
+  rotation; suggestions once a day and toggle respected).
+- Browser (Chromium, 390×844): two partners pair through the UI; A starts the
+  featured moment while simulated offline ("Sending…"), goes through when
+  back online; B sees the identical wording in "Waiting for you" and never
+  A's text; B answers → story; B starts a moment from Explore, A declines →
+  neutral "Not this one". Analytics contain no answer text. No console
+  errors, no horizontal scroll.

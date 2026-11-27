@@ -129,4 +129,56 @@ export const ASSUMPTIONS: Assumption[] = [
     topic: 'Sample story',
     text: 'The unpaired sample moment uses a pre-written story with the labels Mama and Papa, clearly marked Sample. It is static example text, not generated.',
   },
+  {
+    stage: 4,
+    topic: 'Stories in this build',
+    important: true,
+    text:
+      'Until Gemini story generation is connected (stage 5), every completed moment uses the spec’s neutral, intent-matched fallback story and is marked is_fallback. The interaction still completes and raw answers still follow the 24-hour deletion rule.',
+  },
+  {
+    stage: 4,
+    topic: 'Question context lines and stage tags',
+    text:
+      'The spec gives question wording but not context lines, so short neutral context lines were written. Most questions are tagged general. "First hour after our baby arrived" is tagged 1–6 and 7–12 months, and "silliest thing our baby has done lately" is tagged 7–12 and 13–18 months. "Other / prefer not to say" households get general questions only.',
+  },
+  {
+    stage: 4,
+    topic: 'When questions come back',
+    text:
+      'Skipped, declined ("Not this one"), withdrawn and expired questions are held back for that person for 30 days. A question you answered is never offered to you again, and a topic both partners answered is retired for the couple.',
+  },
+  {
+    stage: 4,
+    topic: 'Home featured moment',
+    text:
+      'Home features one question chosen deterministically from the categories you picked during onboarding (falling back to any eligible category). Explore lets you pick any category that neither partner has muted.',
+  },
+  {
+    stage: 4,
+    topic: 'Second partner "Skip"',
+    text: 'For the second partner, Skip means "not now": it leaves the moment waiting and changes nothing. "Not this one" declines it.',
+  },
+  {
+    stage: 4,
+    topic: 'Notification timing',
+    text:
+      'Push-style notifications (suggestions, partner invitations, reminders, story ready) are created immediately but delivered at the next time inside the person’s notification window and outside quiet hours, in the couple’s timezone. If they fall outside, they wait; they are never dropped. App suggestions: at most one per person per day, and none once the couple has already started two new moments that day.',
+  },
+  {
+    stage: 4,
+    topic: 'Reminder copy',
+    text: 'The single reminder reads: "Whenever you’re ready, a little [Category] moment is still here for you both." It is sent reminder_delay_hours after the moment starts, at most once.',
+  },
+  {
+    stage: 4,
+    topic: 'Offline sending',
+    text:
+      'Prototype Controls has a "Simulate offline" switch (the real browser offline state also counts). While offline, a submitted answer shows "Sending…" and retries every 2 seconds with the same idempotency key, so it can never create a duplicate moment.',
+  },
+  {
+    stage: 4,
+    topic: 'Switching partner',
+    text: 'Switching partner in Prototype Controls opens the other partner on their Home screen, like picking up their phone.',
+  },
 ]

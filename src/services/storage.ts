@@ -53,6 +53,8 @@ export interface Db {
   skip_counts: Record<string, number>
   export_log: Record<string, string> // user_id → last export local day
   otp_challenges: Record<string, OtpChallenge>
+  /** Prototype Controls: pretend the network is down so offline submit can be tested. */
+  simulate_offline: boolean
 }
 
 export function emptySlot(): SlotSession {
@@ -83,6 +85,7 @@ export function createEmptyDb(): Db {
     skip_counts: {},
     export_log: {},
     otp_challenges: {},
+    simulate_offline: false,
   }
 }
 
