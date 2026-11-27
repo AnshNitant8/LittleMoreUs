@@ -181,3 +181,10 @@ export works in both places after Approve, no accessibility violations.
 - Model order is now gemini-3.5-flash-lite, gemini-3.1-flash-lite, gemini-3.5-flash, with 10 seconds each. A live run produced valid Gemini stories for all 7 story types in about 1 second each.
 - Each story now records why it fell back (no key, timeout, overloaded, rate limit, key rejected, failed a check).
 - Prototype Controls has an AI tab: key status, model order, a "Test Gemini now" button and the source of recent stories.
+
+## Change: one sign-in flow (27 Nov 2026)
+
+- Sign-in and sign-up are one screen. The person enters a phone or email and the app decides: an existing account is signed in, a new one goes straight to account creation with the 18+ tick and Terms, then the code. "Account not found" is never a dead end.
+- Welcome's two buttons and the invite screen all lead to this one flow. A pending invite stays on the device and is waiting to accept after the code.
+- Prototype Controls shows the build commit and time, so it's clear which deploy is open.
+- Checked in a browser: invite → Dolly@gmail.com (new) → 18+ → code → Accept; and a returning user signs in with no 18+ step.

@@ -76,12 +76,10 @@ export function AcceptInviteScreen({ token, signedIn }: { token: string; signedI
             </button>
           ) : (
             <>
-              <button type="button" className="btn-primary" onClick={() => navigate('signin', 'signup')}>
-                Create account to accept
+              <button type="button" className="btn-primary" onClick={() => navigate('signin')}>
+                Continue with phone or email
               </button>
-              <button type="button" className="btn-secondary" onClick={() => navigate('signin', 'login')}>
-                Sign in to accept
-              </button>
+              <p className="text-center text-sm text-ink-soft">New or returning, it's the same step. We'll create your account if you don't have one.</p>
             </>
           )}
           <button

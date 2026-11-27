@@ -35,7 +35,9 @@ describe('full onboarding flow', () => {
     render(<App />)
     await u.click(await screen.findByRole('button', { name: 'Get Started' }))
     await u.type(await screen.findByLabelText('Phone number or email'), 'priya@example.com')
-    const send = screen.getByRole('button', { name: 'Send my code' })
+    await u.click(screen.getByRole('button', { name: 'Send my code' }))
+    // New phone or email: the app asks for the 18+ tick before creating the account.
+    const send = await screen.findByRole('button', { name: 'Create account and send code' })
     expect(send).toBeDisabled() // age gate
     await u.click(screen.getByLabelText('I am 18 or older'))
     await u.click(send)
@@ -92,20 +94,19 @@ describe('full onboarding flow', () => {
   })
 })
 
-describe('sign in with no account yet', () => {
-  it('moves straight to creating an account, keeping what was typed and the 18+ tick', async () => {
+describe('one sign-in flow', () => {
+  it('a new email from "I already have an account" goes straight to account creation, never a dead end', async () => {
     const u = userEvent.setup()
     render(<App />)
     await u.click(await screen.findByRole('button', { name: 'I already have an account' }))
-    expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument()
-    await u.type(screen.getByLabelText('Phone number or email'), 'dolly@example.com')
+    expect(await screen.findByRole('heading', { name: 'Sign in or create an account' })).toBeInTheDocument()
+    await u.type(screen.getByLabelText('Phone number or email'), 'Dolly@example.com')
     await u.click(screen.getByRole('button', { name: 'Send my code' }))
 
     expect(await screen.findByRole('heading', { name: 'Create your account' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Phone number or email')).toHaveValue('dolly@example.com')
-    expect(screen.getByRole('status')).toHaveTextContent(/no account with dolly@example.com yet/)
+    expect(screen.getByLabelText('Phone number or email')).toHaveValue('Dolly@example.com')
     expect(screen.queryByText(/couldn't find an account/)).not.toBeInTheDocument()
-    const send = screen.getByRole('button', { name: 'Send my code' })
+    const send = screen.getByRole('button', { name: 'Create account and send code' })
     expect(send).toBeDisabled()
     await u.click(screen.getByLabelText('I am 18 or older'))
     await u.click(send)

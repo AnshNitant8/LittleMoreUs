@@ -39,7 +39,12 @@ const minutesLeft = (untilIso: string) => Math.max(1, Math.ceil((Date.parse(unti
 
 export interface RequestOtpInput {
   identifier: string
-  mode: 'signup' | 'login'
+  /**
+   * 'continue' is the one sign-in flow the app uses: an existing account is
+   * signed in, a new phone or email creates an account (after the 18+ tick).
+   * 'signup' and 'login' remain for strict callers and tests.
+   */
+  mode: 'continue' | 'signup' | 'login'
   /** Required for signup (age gate). */
   is_18_confirmed?: boolean
   idempotencyKey: string
@@ -58,14 +63,19 @@ export async function requestOtp(input: RequestOtpInput): Promise<Result<OtpStat
   return mutateCommitting(input.idempotencyKey, (db) => {
     const id = normaliseIdentifier(input.identifier ?? '')
     if (!id) return err(400, 'Please enter a valid phone number (10–15 digits) or email address.')
-    if (input.mode !== 'signup' && input.mode !== 'login') return err(400, 'Unknown sign-in mode.')
-    if (input.mode === 'signup' && input.is_18_confirmed !== true)
-      return err(400, 'Please confirm you are 18 or older to create an account.')
+    if (input.mode !== 'signup' && input.mode !== 'login' && input.mode !== 'continue') return err(400, 'Unknown sign-in mode.')
 
     const existing = findByIdentifier(db, id.value)
-    if (input.mode === 'signup' && existing)
+    // A deleted-and-erased account counts as new.
+    const mode: 'signup' | 'login' = input.mode === 'continue' ? (existing ? 'login' : 'signup') : input.mode
+    if (mode === 'signup' && input.is_18_confirmed !== true) {
+      return input.mode === 'continue'
+        ? { ok: false, error: { code: 400, message: "You're new here. Confirm you're 18 or older and we'll create your account.", new_account: true } }
+        : err(400, 'Please confirm you are 18 or older to create an account.')
+    }
+    if (mode === 'signup' && existing)
       return err(409, 'There is already an account with this. You can log in instead.')
-    if (input.mode === 'login' && !existing)
+    if (mode === 'login' && !existing)
       return err(404, "We couldn't find an account with this. You can create one instead.")
     const otherSlot = db.active_slot === 'A' ? 'B' : 'A'
     if (existing && db.slots[otherSlot].user_id === existing.user_id)
@@ -90,8 +100,8 @@ export async function requestOtp(input: RequestOtpInput): Promise<Result<OtpStat
       failed_attempts: 0,
       locked_until: null,
     }
-    activeSession(db).otp = { identifier: id.value, mode: input.mode, is_18_confirmed: input.is_18_confirmed === true }
-    track(db, 'otp_requested', { mode: input.mode, kind: id.kind })
+    activeSession(db).otp = { identifier: id.value, mode, is_18_confirmed: input.is_18_confirmed === true }
+    track(db, 'otp_requested', { mode, kind: id.kind })
     return { ok: true, data: otpStatus(db)! }
   })
 }

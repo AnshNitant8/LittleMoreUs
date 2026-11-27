@@ -59,7 +59,7 @@ export function OtpScreen() {
         intro={<>We sent a 6-digit code to <strong className="text-ink">{status.identifier}</strong>. It works for 10 minutes.</>}
         onBack={async () => {
           await cancelOtp()
-          navigate('signin', status.mode)
+          navigate('signin')
         }}
         footer={
           <>

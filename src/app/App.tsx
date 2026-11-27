@@ -61,7 +61,7 @@ function SlotView() {
   if (route.name === 'invite' && route.param) return <AcceptInviteScreen key={route.param} token={route.param} signedIn={!!user} />
   if (user && pending_invite && !couple) return <AcceptInviteScreen key={pending_invite} token={pending_invite} signedIn />
   if (!user) {
-    if (route.name === 'signin') return <SignInScreen mode={route.param === 'login' ? 'login' : 'signup'} />
+    if (route.name === 'signin') return <SignInScreen />
     if (route.name === 'otp') return <OtpScreen />
     return <WelcomeScreen />
   }

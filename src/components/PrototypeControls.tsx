@@ -82,6 +82,9 @@ export function PrototypeControls() {
               <div>
                 <p className="text-xs uppercase tracking-widest text-proto-accent">Prototype Controls</p>
                 <p className="text-[11px] text-slate-400">Developer tools · not part of the parent experience</p>
+                <p className="text-[11px] text-slate-400">
+                  Build <span className="text-proto-accent">{__BUILD_COMMIT__}</span> · {new Date(__BUILD_TIME__).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                </p>
               </div>
               <button
                 type="button"

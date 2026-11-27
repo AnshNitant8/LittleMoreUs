@@ -22,10 +22,10 @@ export function WelcomeScreen() {
         <HeroFamilies className="w-full" />
       </div>
       <div className="mt-auto space-y-3 pb-8">
-        <button type="button" className="btn-primary" onClick={() => navigate('signin', 'signup')}>
+        <button type="button" className="btn-primary" onClick={() => navigate('signin')}>
           Get Started
         </button>
-        <button type="button" className="btn-secondary" onClick={() => navigate('signin', 'login')}>
+        <button type="button" className="btn-secondary" onClick={() => navigate('signin')}>
           I already have an account
         </button>
       </div>

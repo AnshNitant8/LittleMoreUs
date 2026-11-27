@@ -191,3 +191,23 @@ describe('onboarding and profile', () => {
     expect(JSON.stringify(readDb().analytics)).not.toContain('secret@x.com')
   })
 })
+
+describe('continue mode (the one sign-in flow)', () => {
+  it('asks a new phone or email for the 18+ tick, then creates the account', async () => {
+    const first = await requestOtp({ identifier: 'new@x.com', mode: 'continue', idempotencyKey: k() })
+    expect(!first.ok && first.error.new_account).toBe(true)
+    const r = await requestOtp({ identifier: 'new@x.com', mode: 'continue', is_18_confirmed: true, idempotencyKey: k() })
+    expect(r.ok && r.data.mode).toBe('signup')
+    const v = await verifyOtp({ code: '123456', idempotencyKey: k() })
+    expect(v.ok).toBe(true)
+  })
+
+  it('signs an existing account in without the tick', async () => {
+    await requestOtp({ identifier: 'a@x.com', mode: 'signup', is_18_confirmed: true, idempotencyKey: k() })
+    await verifyOtp({ code: '123456', idempotencyKey: k() })
+    await logout({ idempotencyKey: k() })
+    const r = await requestOtp({ identifier: 'A@x.com', mode: 'continue', idempotencyKey: k() })
+    expect(r.ok && r.data.mode).toBe('login')
+  })
+})
+

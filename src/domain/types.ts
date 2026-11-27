@@ -345,6 +345,8 @@ export interface ApiError {
   interaction_id?: string
   /** On a story outside the free window without an unlock: show the paywall. */
   locked?: boolean
+  /** Sign-in with a phone or email that has no account yet: ask for the 18+ tick, then create it. */
+  new_account?: boolean
 }
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: ApiError }
