@@ -181,4 +181,34 @@ export const ASSUMPTIONS: Assumption[] = [
     topic: 'Switching partner',
     text: 'Switching partner in Prototype Controls opens the other partner on their Home screen, like picking up their phone.',
   },
+  {
+    stage: 5,
+    topic: 'Gemini model and timing',
+    text: 'Stories use gemini-3.5-flash first (override with VITE_GEMINI_MODEL), then gemini-3.8-flash, with 12 seconds per model. The distress classifier uses one model with a 6 second limit. If Gemini is slow, rate-limited or unavailable, the moment still completes with a library story.',
+  },
+  {
+    stage: 5,
+    topic: 'API key in the browser',
+    text: 'Prototype only: the Gemini key is read from VITE_GEMINI_API_KEY and ships to the browser, where it can be extracted. A real launch must move both AI calls behind a server. gemini.ts is the only module that would change.',
+  },
+  {
+    stage: 5,
+    topic: 'Support region',
+    text: 'India contacts are shown when the sign-in identifier is a +91 number or the device time zone is Asia/Kolkata. Everyone else sees the general wording. Verify all numbers before launch.',
+  },
+  {
+    stage: 5,
+    topic: 'Flagged first answer',
+    text: 'If the first answer of a moment is flagged, the moment is held at once and never shown to the partner: no notification and no "Waiting for you" entry. Both answers are purged and only the flag is kept, for 30 days.',
+  },
+  {
+    stage: 5,
+    topic: 'Write it again',
+    text: '"Write it again" sits inside "Something doesn\'t feel right". It can be used once per story, within 24 hours, while the raw answers still exist. If the first version was already saved to the Storybook, it is kept and the new version appears alongside it.',
+  },
+  {
+    stage: 5,
+    topic: 'Dismiss and Done',
+    text: 'Dismiss and Done both return Home and leave the story unsaved, so it stays in recent stories but not in the Storybook.',
+  },
 ]

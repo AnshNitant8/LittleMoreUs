@@ -47,8 +47,8 @@ export interface Db {
   notifications: AppNotification[]
   analytics: AnalyticsEvent[]
   audit_log: AuditLog[]
-  /** Idempotency keys already processed → stored result. */
-  idempotency: Record<string, unknown>
+  /** Idempotency keys already processed → stored result (answer text redacted), purged after 24h. */
+  idempotency: Record<string, { at: string; result: unknown }>
   /** Per-user, per-day skip counts: `${user_id}|${day}|${category}` → count */
   skip_counts: Record<string, number>
   export_log: Record<string, string> // user_id → last export local day

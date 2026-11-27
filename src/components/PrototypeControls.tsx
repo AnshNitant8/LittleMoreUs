@@ -10,6 +10,9 @@ import {
   listNotifications,
   markNotificationsRead,
   resetAllPrototypeData,
+  adminListReports,
+  adminReviewReport,
+  idemKey,
   setSimulatedOffline,
   switchUser,
   updateFlags,
@@ -353,6 +356,7 @@ function AnalyticsPanel() {
 }
 
 function AdminPanel() {
+  const { state } = useService(adminListReports)
   return (
     <>
       <Section title="Verify payment queue">
@@ -360,10 +364,33 @@ function AdminPanel() {
           Unavailable in this build yet. Arrives with the Storybook and payments stage.
         </p>
       </Section>
-      <Section title="Review reports">
-        <p className="rounded-md border border-dashed border-slate-500 p-3 text-slate-300">
-          Unavailable in this build yet. Arrives with the AI stories stage.
-        </p>
+      <Section title="Review reports (story, intent and question only)">
+        {state.status === 'ready' && state.data.length === 0 && <p className="text-slate-400">No reports.</p>}
+        {state.status === 'ready' && (
+          <ul className="space-y-2">
+            {state.data.map((r) => (
+              <li key={r.report_id} className="space-y-2 rounded-md bg-slate-800 p-3">
+                <p className="text-[11px] text-slate-400">
+                  {r.reason} · intent {r.story_intent} · {formatDateTime(r.created_at)}
+                </p>
+                <p className="font-sans text-slate-300">Q: {r.question_text}</p>
+                <p className="font-sans">{r.story_text}</p>
+                {r.outcome ? (
+                  <p className="text-proto-accent">Reviewed: {r.outcome === 'quarantined' ? 'quarantined for both partners' : 'no action'}</p>
+                ) : (
+                  <div className="flex gap-2">
+                    <button type="button" className={protoBtn} onClick={() => adminReviewReport({ report_id: r.report_id, outcome: 'quarantined', idempotencyKey: idemKey('review') })}>
+                      Quarantine
+                    </button>
+                    <button type="button" className={protoBtn} onClick={() => adminReviewReport({ report_id: r.report_id, outcome: 'no_action', idempotencyKey: idemKey('review') })}>
+                      No action
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </Section>
     </>
   )

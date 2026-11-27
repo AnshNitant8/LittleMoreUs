@@ -93,7 +93,7 @@ function PairedHome() {
   const { state, reload } = useService(getHome)
   if (state.status === 'loading') return <LoadingState />
   if (state.status === 'error') return <ErrorState message={state.error.message} onRetry={reload} />
-  const { featured, waiting_for_you, my_open, recent_stories } = state.data
+  const { featured, waiting_for_you, my_open, recent_stories, recent_closed } = state.data
   return (
     <>
       {waiting_for_you.length > 0 && (
@@ -140,6 +140,23 @@ function PairedHome() {
             {my_open.map((i) => (
               <li key={i.interaction_id}>
                 <MomentRow i={i} onOpen={() => navigate('waiting', i.interaction_id)} note={i.status === 'generating' ? 'Writing your story' : 'Waiting'} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {recent_closed.length > 0 && (
+        <section aria-labelledby="closed-title" className="space-y-3">
+          <h2 id="closed-title" className="text-lg font-extrabold">Recent moments</h2>
+          <ul className="space-y-3">
+            {recent_closed.map((i) => (
+              <li key={i.interaction_id}>
+                <MomentRow
+                  i={i}
+                  onOpen={() => navigate('waiting', i.interaction_id)}
+                  note={i.status === 'declined' ? 'Not this one' : i.status === 'expired' ? 'Closed' : "This one didn't become a story"}
+                />
               </li>
             ))}
           </ul>

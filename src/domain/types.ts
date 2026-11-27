@@ -178,6 +178,8 @@ export interface Interaction {
   expires_at: ISODate
   reminder_sent_at: ISODate | null
   safety_held_at: ISODate | null
+  /** When it closed without a story (declined, expired, withdrawn, held). */
+  closed_at?: ISODate | null
   /** Boolean only, never the text. Purged after 30 simulated days. */
   distress_flag: boolean | null
   first_responder_id: UserId

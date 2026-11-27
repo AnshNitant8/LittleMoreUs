@@ -92,3 +92,19 @@ Built in seven reviewable stages (spec Section 1). A stage is ticked only after
   A's text; B answers → story; B starts a moment from Explore, A declines →
   neutral "Not this one". Analytics contain no answer text. No console
   errors, no horizontal scroll.
+
+## Stage 5 checks
+- Type check: pass. Build: pass. Tests: 89/89 pass (stories and safety:
+  minimal Gemini payload with no identifiers or age band; validation rules
+  incl. labels, intent shape, invented names, prohibited content; retry once
+  then verbatim fallback; timeouts and bad JSON fall back; distress phrase
+  list and classifier, classifier error treated as not flagged; flagged
+  answers purged with only the flag kept and purged at 30 days; support card
+  only for the flagged person; save, react, report hides for the reporter,
+  regenerate once; admin review without raw answers; thanks screen stays
+  after reporting).
+- Browser (Chromium, 390×844, live Gemini): two partners answer a moment and
+  a live Gemini story renders (about 18 s with a rate-limited first try);
+  React, Save, Report and "Thanks for telling us" work; B's distress answer
+  shows the private support card, A sees nothing and the answer text is not
+  in storage; analytics contain no answer text. No horizontal scroll.

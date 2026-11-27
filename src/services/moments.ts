@@ -2,7 +2,7 @@
 // Privacy: views never include the partner's raw answer; notifications and
 // analytics never include question or answer text.
 
-import { ANSWER_MAX, CATEGORIES, SKIP_LIMIT_PER_CATEGORY_PER_DAY } from '../domain/constants'
+import { ANSWER_MAX, CATEGORIES, DISTRESS_FLAG_RETENTION_DAYS, SKIP_LIMIT_PER_CATEGORY_PER_DAY } from '../domain/constants'
 import { selectQuestion, eligibleQuestions, type SelectionContext } from '../domain/rules/selection'
 import type {
   CategoryId,
@@ -24,6 +24,7 @@ import { DURATION, nowIso, nowMs } from './clock'
 import {
   activeCoupleOf,
   activeSession,
+  cachedResult,
   fail,
   isOffline,
   mutate,
@@ -34,7 +35,8 @@ import {
   track,
 } from './core'
 import { notify } from './notify'
-import type { Db } from './storage'
+import { readDb, type Db } from './storage'
+import { checkDistress, type DistressResult } from './safety'
 import { completeWithStory } from './stories'
 
 export const OPEN_STATUSES: InteractionStatus[] = ['awaiting_partner', 'generating']
@@ -166,6 +168,8 @@ export interface InteractionView {
   partner_has_answered: boolean
   initiator_label: string
   story_id: string | null
+  /** Only ever true for the person whose own answer was flagged. Never for the partner. */
+  show_support: boolean
 }
 
 function interactionView(db: Db, i: Interaction, viewerId: string): InteractionView {
@@ -186,6 +190,10 @@ function interactionView(db: Db, i: Interaction, viewerId: string): InteractionV
     partner_has_answered: !!theirs,
     initiator_label: initiator?.parent_label || 'Your partner',
     story_id: story?.story_id ?? null,
+    show_support:
+      i.status === 'safety_held' &&
+      i.distress_flag === true &&
+      db.responses.some((r) => r.interaction_id === i.interaction_id && r.user_id === viewerId && r.distress_flag),
   }
 }
 
@@ -287,6 +295,43 @@ export async function saveDraft(key: string, text: string): Promise<Result<true>
 
 // ---------- Interactions ----------
 
+/**
+ * Run the distress check before the write. The text is held only in memory
+ * for the check. Skipped when the write would be a no-op (repeat key, offline,
+ * or obviously invalid input that the service will reject anyway).
+ */
+async function preCheck(idempotencyKey: string, answer: string, consent: boolean): Promise<DistressResult | null> {
+  const db = readDb()
+  if (cachedResult(idempotencyKey) || isOffline(db)) return null
+  if (consent !== true || !(answer ?? '').trim() || Array.from(answer.trim()).length > ANSWER_MAX) return null
+  return checkDistress(answer.trim())
+}
+
+/** Spec Section 9: hold the interaction, delete answer text, keep only a boolean flag. */
+function holdForSafety(db: Db, i: Interaction) {
+  i.status = 'safety_held'
+  i.safety_held_at = nowIso()
+  i.closed_at = i.safety_held_at
+  i.distress_flag = true
+  purgeResponses(db, i.interaction_id)
+}
+
+function flaggedResponse(interactionId: string, userId: string): Response {
+  const t = nowIso()
+  return {
+    response_id: newId('rsp'),
+    interaction_id: interactionId,
+    user_id: userId,
+    text_or_choice: null, // flagged text is never stored
+    consent_state: 'given',
+    consent_at: t,
+    status: 'deleted',
+    delete_after: null,
+    distress_flag: true,
+    submitted_at: t,
+  }
+}
+
 export interface CreateInteractionInput {
   question_id: string
   answer: string
@@ -299,6 +344,7 @@ export interface CreateInteractionInput {
  * response, daily counter and partner notification commit together or not at all.
  */
 export async function createInteraction(input: CreateInteractionInput): Promise<Result<InteractionView>> {
+  const safety = await preCheck(input.idempotencyKey, input.answer, input.consent)
   return mutate(input.idempotencyKey, (db) => {
     if (isOffline(db)) fail(503, "You're offline. We'll keep trying.")
     const me = requireUser(db)
@@ -350,11 +396,20 @@ export async function createInteraction(input: CreateInteractionInput): Promise<
       distress_flag: false,
       submitted_at: interaction.created_at,
     }
+    couple.daily_counter = couple.daily_counter.date === today ? { date: today, count: couple.daily_counter.count + 1 } : { date: today, count: 1 }
+    delete activeSession(db).drafts[`q:${question.question_id}`]
+    if (safety?.classifier_error) track(db, 'distress_classifier_error', { stage: 'create' })
+    if (safety?.flagged) {
+      // Held privately: no story, no partner notification, no text stored.
+      db.interactions.push(interaction)
+      db.responses.push(flaggedResponse(interaction.interaction_id, me.user_id))
+      holdForSafety(db, interaction)
+      setHistoryStatus(db, me.user_id, couple, question, 'dismissed')
+      return interactionView(db, interaction, me.user_id)
+    }
     db.interactions.push(interaction)
     db.responses.push(response)
-    couple.daily_counter = couple.daily_counter.date === today ? { date: today, count: couple.daily_counter.count + 1 } : { date: today, count: 1 }
     setHistoryStatus(db, me.user_id, couple, question, 'answered')
-    delete activeSession(db).drafts[`q:${question.question_id}`]
 
     const partnerId = partnerIdOf(couple, me.user_id)
     setHistory(db, {
@@ -405,6 +460,8 @@ export interface HomeView {
   waiting_for_you: InteractionView[]
   my_open: InteractionView[]
   recent_stories: { interaction_id: string; story_id: string; category: CategoryId }[]
+  /** Moments of mine that closed without a story in the last day (neutral wording only). */
+  recent_closed: InteractionView[]
 }
 
 export async function getHome(): Promise<Result<HomeView>> {
@@ -425,8 +482,17 @@ export async function getHome(): Promise<Result<HomeView>> {
     const recent = db.stories
       .filter((s) => s.couple_id === couple.couple_id && Date.parse(s.created_at) > dayAgo && !s.quarantined && !s.hidden_for_user_ids.includes(me.user_id))
       .map((s) => ({ interaction_id: s.interaction_id, story_id: s.story_id, category: s.category }))
+    const closed = db.interactions.filter(
+      (i) =>
+        i.couple_id === couple.couple_id &&
+        ['declined', 'expired', 'safety_held'].includes(i.status) &&
+        !!i.closed_at &&
+        nowMs() - Date.parse(i.closed_at) < DURATION.DAY &&
+        db.responses.some((r) => r.interaction_id === i.interaction_id && r.user_id === me.user_id),
+    )
     return {
       featured: featured.data,
+      recent_closed: closed.map((i) => interactionView(db, i, me.user_id)),
       waiting_for_you: waiting.map((i) => interactionView(db, i, me.user_id)),
       my_open: myOpen.map((i) => interactionView(db, i, me.user_id)),
       recent_stories: recent,
@@ -443,6 +509,7 @@ export async function getInteraction(interactionId: string): Promise<Result<Inte
 
 /** Partner's reply. Never consumes allowance, even when the cap is reached. */
 export async function respondToInteraction(input: { interaction_id: string; answer: string; consent: boolean; idempotencyKey: string }): Promise<Result<InteractionView>> {
+  const safety = await preCheck(input.idempotencyKey, input.answer, input.consent)
   const res = await mutate(input.idempotencyKey, (db) => {
     if (isOffline(db)) fail(503, "You're offline. We'll keep trying.")
     const me = requireUser(db)
@@ -456,6 +523,16 @@ export async function respondToInteraction(input: { interaction_id: string; answ
       fail(409, 'You already answered this one.')
     }
     const text = validateAnswer(input.answer, input.consent)
+    if (safety?.classifier_error) track(db, 'distress_classifier_error', { stage: 'respond' })
+    if (safety?.flagged) {
+      const q0 = questionById(i.question_id)!
+      db.responses.push(flaggedResponse(i.interaction_id, me.user_id))
+      holdForSafety(db, i) // also deletes the initiator's answer
+      setHistoryStatus(db, me.user_id, couple, q0, 'dismissed')
+      setHistoryStatus(db, i.initiator_id, couple, q0, 'dismissed')
+      delete activeSession(db).drafts[`i:${i.interaction_id}`]
+      return interactionView(db, i, me.user_id)
+    }
     const t = nowIso()
     db.responses.push({
       response_id: newId('rsp'),
@@ -477,7 +554,7 @@ export async function respondToInteraction(input: { interaction_id: string; answ
     return interactionView(db, i, me.user_id)
   })
   // Generation is asynchronous: kick it off after the answer is safely stored.
-  if (res.ok) void generateFor(res.data.interaction_id)
+  if (res.ok && res.data.status === 'generating') void generateFor(res.data.interaction_id)
   return res
 }
 
@@ -495,6 +572,7 @@ export async function declineInteraction(input: { interaction_id: string; idempo
     if (i.status !== 'awaiting_partner') fail(410, 'This moment is no longer open.')
     const couple = db.couples.find((c) => c.couple_id === i.couple_id)!
     i.status = 'declined'
+    i.closed_at = nowIso()
     purgeResponses(db, i.interaction_id)
     const q = questionById(i.question_id)!
     setHistoryStatus(db, me.user_id, couple, q, 'dismissed')
@@ -520,6 +598,7 @@ export async function withdrawInteraction(input: { interaction_id: string; idemp
     if (i.initiator_id === me.user_id) {
       if (!OPEN_STATUSES.includes(i.status)) fail(410, 'This moment is no longer open.')
       i.status = 'withdrawn'
+      i.closed_at = nowIso()
       purgeResponses(db, i.interaction_id)
       setHistoryStatus(db, me.user_id, couple, q, 'dismissed')
       const partnerId = partnerIdOf(couple, me.user_id)
@@ -542,6 +621,7 @@ registerJob('expire_interactions', (db) => {
   for (const i of db.interactions) {
     if (i.status === 'awaiting_partner' && Date.parse(i.expires_at) <= nowMs()) {
       i.status = 'expired'
+      i.closed_at = nowIso()
       purgeResponses(db, i.interaction_id)
       const couple = db.couples.find((c) => c.couple_id === i.couple_id)
       const q = questionById(i.question_id)
@@ -619,3 +699,26 @@ registerJob('app_suggestions', (db) => {
   return n
 })
 
+
+/** Distress flags are kept as a boolean only, and purged after 30 simulated days. */
+registerJob('purge_distress_flags', (db) => {
+  let n = 0
+  for (const i of db.interactions) {
+    if (i.distress_flag !== null && i.safety_held_at && nowMs() - Date.parse(i.safety_held_at) >= DISTRESS_FLAG_RETENTION_DAYS * DURATION.DAY) {
+      i.distress_flag = null
+      for (const r of db.responses) if (r.interaction_id === i.interaction_id) r.distress_flag = false
+      n++
+    }
+  }
+  return n
+})
+
+/** Country for the support card: India when the phone or couple timezone says so, otherwise unknown. */
+export async function getSupportRegion(): Promise<Result<'IN' | null>> {
+  return query((db) => {
+    const me = requireUser(db)
+    const couple = activeCoupleOf(db, me.user_id)
+    const tz = couple?.timezone ?? ''
+    return me.identifier.startsWith('+91') || tz === 'Asia/Kolkata' || tz === 'Asia/Calcutta' ? 'IN' : null
+  })
+}

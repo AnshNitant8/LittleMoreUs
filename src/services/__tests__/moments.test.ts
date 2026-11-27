@@ -119,7 +119,7 @@ describe('creating a moment (acceptance 3 & 4)', () => {
     const qid = QUESTIONS[0].question_id
     const r1 = await createInteraction({ question_id: qid, answer: 'once', consent: true, idempotencyKey: key })
     const r2 = await createInteraction({ question_id: qid, answer: 'once', consent: true, idempotencyKey: key })
-    expect(r1).toEqual(r2)
+    expect(r1.ok && r2.ok && r1.data.interaction_id === r2.data.interaction_id).toBe(true)
     expect(readDb().interactions).toHaveLength(1)
     expect(readDb().couples[0].daily_counter.count).toBe(1)
   })
@@ -182,6 +182,8 @@ describe('answering, story and retention (acceptance 5, 6, 8)', () => {
     expect(readDb().responses.every((x) => x.text_or_choice)).toBe(true)
     await advanceClock(24)
     expect(readDb().responses.every((x) => x.text_or_choice === null && x.status === 'deleted')).toBe(true)
+    // nothing else (replay cache, drafts, analytics) keeps the raw text
+    expect(JSON.stringify(readDb())).not.toMatch(/A rainy walk|Hot chai after/)
     // topic retires for the couple
     await switchUser('A')
     const next = await getNextMoment('remember_us')

@@ -1,0 +1,165 @@
+// The only module that talks to Gemini. Kept isolated so it can later move
+// behind a server endpoint without touching the rest of the app.
+//
+// PROTOTYPE LIMITATION: the API key is read from VITE_GEMINI_API_KEY and is
+// therefore shipped to the browser, where it is extractable. Not production-safe.
+
+import { GoogleGenAI, Type } from '@google/genai'
+
+export const STORY_SYSTEM_INSTRUCTION =
+  'You write one short story in the imagined voice of a baby or toddler speaking to their two parents. Output JSON only: {"story_text": string, "intent_used": string}. Rules: 2 to 4 sentences, at most about 600 characters, text only. Use each parent\'s label exactly as supplied and give both parents balanced attention. Use only information in the question and the two answers. Never invent facts, feelings, plans, agreement, compromise or happy endings. Never judge or compare the parents, never use the child to create guilt, never give medical, therapeutic or relationship advice, never claim to know the child\'s real feelings. Choose the narrative shape from story_intent and never infer the intent from the answers: memory = reflective past tense; present or appreciation = present tense; preference = framed as choices, not events; future_plan = forward-looking ("is leaning towards", "might"), never narrating a past memory; support = acknowledge needs without claiming anything is resolved; playful_hypothetical = light, never turning a guess into a fact. Set intent_used equal to story_intent. If both labels are identical, use the label with the first name each time.'
+
+/** Style-only examples (spec Section 8). Sent as context, never to be copied. */
+export const FEW_SHOT_EXAMPLES = {
+  memory:
+    'Mumma, Papa, I heard that you both remember the rainy evening you first danced in the kitchen. One of you remembers the music, the other remembers laughing. I like that you each keep a different piece of it.',
+  appreciation:
+    'Mama, you noticed how Baba warmed my milk before dawn. Baba, you noticed Mama humming to me when the house was quiet. I think you are both quietly looking after each other too.',
+  future_plan:
+    'Mumma is leaning towards a slow Sunday walk, and Papa is leaning towards a long breakfast. I wonder if there might be room for a little of both.',
+  playful_hypothetical:
+    'If I picked our song, Papa thinks it might be something with a lot of drums, and Mumma thinks it might be a lullaby that sounds like a hum. I think I would keep both on repeat.',
+}
+
+export const DISTRESS_SYSTEM_INSTRUCTION =
+  'You are a cautious safety classifier for a couples app used by new parents. Decide whether the text suggests the writer may be in distress: postpartum low mood or depression, hopelessness, thoughts of self-harm or suicide, or feeling unsafe at home or afraid of a partner. Be sensitive: when in doubt, answer true. Ordinary tiredness or everyday frustration alone is not distress. Output JSON only: {"distress": boolean}.'
+
+/** Exactly the fields allowed to leave the device for a story (spec Section 8). */
+export interface StoryRequest {
+  question: string
+  context: string
+  story_intent: string
+  story_pattern: string
+  /** Label as it must appear (with first name when labels match). */
+  parent_a_label: string
+  parent_b_label: string
+  answer_from_parent_a: string
+  answer_from_parent_b: string
+}
+
+export interface StoryModelOutput {
+  story_text: string
+  intent_used: string
+}
+
+/** The two AI jobs. Swappable so tests (or a future server) can provide them. */
+export interface AiClient {
+  readonly available: boolean
+  /** Returns parsed JSON or throws. */
+  generateStory(req: StoryRequest): Promise<{ output: StoryModelOutput; model: string }>
+  /** Returns the classifier verdict or throws. */
+  classifyDistress(text: string): Promise<boolean>
+}
+
+const MODELS = [
+  (import.meta.env.VITE_GEMINI_MODEL as string | undefined) || 'gemini-3.5-flash',
+  'gemini-3.8-flash',
+].filter((m, i, all) => all.indexOf(m) === i)
+const STORY_TIMEOUT_MS = 12_000
+const CLASSIFY_TIMEOUT_MS = 6_000
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms)
+    p.then(
+      (v) => {
+        clearTimeout(t)
+        resolve(v)
+      },
+      (e) => {
+        clearTimeout(t)
+        reject(e)
+      },
+    )
+  })
+}
+
+function createGeminiClient(apiKey: string | undefined): AiClient {
+  if (!apiKey) {
+    return {
+      available: false,
+      generateStory: () => Promise.reject(new Error('no_api_key')),
+      classifyDistress: () => Promise.reject(new Error('no_api_key')),
+    }
+  }
+  const ai = new GoogleGenAI({ apiKey })
+
+  async function firstModelThatAnswers<T>(run: (model: string) => Promise<T>, timeoutMs: number, models = MODELS): Promise<{ value: T; model: string }> {
+    let lastError: unknown = null
+    for (const model of models) {
+      try {
+        return { value: await withTimeout(run(model), timeoutMs), model }
+      } catch (e) {
+        lastError = e
+      }
+    }
+    throw lastError ?? new Error('no_model')
+  }
+
+  return {
+    available: true,
+    async generateStory(req) {
+      const contents = JSON.stringify({
+        style_examples_do_not_copy: FEW_SHOT_EXAMPLES,
+        input: req,
+      })
+      const { value, model } = await firstModelThatAnswers(
+        (m) =>
+          ai.models.generateContent({
+            model: m,
+            contents,
+            config: {
+              systemInstruction: STORY_SYSTEM_INSTRUCTION,
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: { story_text: { type: Type.STRING }, intent_used: { type: Type.STRING } },
+                required: ['story_text', 'intent_used'],
+              },
+              temperature: 0.7,
+            },
+          }),
+        STORY_TIMEOUT_MS,
+      )
+      const parsed = JSON.parse(value.text ?? '') as Partial<StoryModelOutput>
+      if (typeof parsed.story_text !== 'string' || typeof parsed.intent_used !== 'string') throw new Error('bad_shape')
+      return { output: { story_text: parsed.story_text, intent_used: parsed.intent_used }, model }
+    },
+    async classifyDistress(text) {
+      const { value } = await firstModelThatAnswers(
+        (m) =>
+          ai.models.generateContent({
+            model: m,
+            contents: JSON.stringify({ text }),
+            config: {
+              systemInstruction: DISTRESS_SYSTEM_INSTRUCTION,
+              responseMimeType: 'application/json',
+              responseSchema: { type: Type.OBJECT, properties: { distress: { type: Type.BOOLEAN } }, required: ['distress'] },
+              temperature: 0,
+            },
+          }),
+        CLASSIFY_TIMEOUT_MS,
+        // One model only: a slow classifier must not hold up sending an answer.
+        MODELS.slice(0, 1),
+      )
+      const parsed = JSON.parse(value.text ?? '') as { distress?: unknown }
+      if (typeof parsed.distress !== 'boolean') throw new Error('bad_shape')
+      return parsed.distress
+    },
+  }
+}
+
+let client: AiClient = createGeminiClient(import.meta.env.VITE_GEMINI_API_KEY as string | undefined)
+
+export function getAiClient(): AiClient {
+  return client
+}
+
+/** Tests and a future server-backed client can replace the default. */
+export function setAiClient(next: AiClient) {
+  client = next
+}
+
+export function resetAiClient() {
+  client = createGeminiClient(import.meta.env.VITE_GEMINI_API_KEY as string | undefined)
+}

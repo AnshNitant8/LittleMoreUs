@@ -57,17 +57,45 @@ export async function query<T>(fn: (db: Db) => T): Promise<Result<T>> {
 export async function mutate<T>(idempotencyKey: string, fn: (db: Db) => T): Promise<Result<T>> {
   await tick()
   if (!idempotencyKey) return { ok: false, error: { code: 400, message: 'Missing idempotency key.' } }
-  const existing = readDb().idempotency[idempotencyKey]
-  if (existing !== undefined) return existing as Result<T>
+  const existing = cachedResult<T>(idempotencyKey)
+  if (existing) return existing
   const result = toResult(() =>
     transact((db) => {
       const data = fn(db)
-      db.idempotency[idempotencyKey] = { ok: true, data }
+      remember(db, idempotencyKey, { ok: true, data })
       return data
     }),
   )
   return result
 }
+
+/** Previously returned result for this key, if the write already happened. */
+export function cachedResult<T>(key: string): Result<T> | null {
+  const hit = readDb().idempotency[key]
+  return hit ? (hit.result as Result<T>) : null
+}
+
+/**
+ * Raw answers must never outlive their retention, so the replay cache keeps a
+ * copy with any own-answer text removed.
+ */
+function redact(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redact)
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = k === 'my_response' && v && typeof v === 'object' ? { ...(v as object), text: null } : redact(v)
+    }
+    return out
+  }
+  return value
+}
+
+function remember(db: Db, key: string, result: Result<unknown>) {
+  db.idempotency[key] = { at: new Date(Date.now() + db.clock_offset_ms).toISOString(), result: redact(result) }
+}
+
+const IDEMPOTENCY_TTL_MS = 24 * 3_600_000
 
 /**
  * Write whose failures must still be saved (e.g. a wrong OTP increments the
@@ -77,12 +105,12 @@ export async function mutate<T>(idempotencyKey: string, fn: (db: Db) => T): Prom
 export async function mutateCommitting<T>(idempotencyKey: string, fn: (db: Db) => Result<T>): Promise<Result<T>> {
   await tick()
   if (!idempotencyKey) return { ok: false, error: { code: 400, message: 'Missing idempotency key.' } }
-  const existing = readDb().idempotency[idempotencyKey]
-  if (existing !== undefined) return existing as Result<T>
+  const existing = cachedResult<T>(idempotencyKey)
+  if (existing) return existing
   const res = toResult(() =>
     transact((db) => {
       const r = fn(db)
-      if (r.ok) db.idempotency[idempotencyKey] = r
+      if (r.ok) remember(db, idempotencyKey, r)
       return r
     }),
   )
@@ -139,7 +167,19 @@ export interface JobSummary {
 
 type Job = (db: Db) => number
 /** Jobs are registered by later stages: expiry, reminders, Recent cleanup, purges. */
-const jobs: Record<string, Job> = {}
+const jobs: Record<string, Job> = {
+  purge_idempotency_cache: (db) => {
+    const now = Date.now() + db.clock_offset_ms
+    let n = 0
+    for (const [k, v] of Object.entries(db.idempotency)) {
+      if (!v || typeof v !== 'object' || !('at' in v) || now - Date.parse(v.at) > IDEMPOTENCY_TTL_MS) {
+        delete db.idempotency[k]
+        n++
+      }
+    }
+    return n
+  },
+}
 
 export function registerJob(name: string, job: Job) {
   jobs[name] = job

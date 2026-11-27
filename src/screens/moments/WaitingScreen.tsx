@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useRouter } from '../../app/router'
 import { FieldError } from '../../components/Onboarding'
 import { QuestionCard } from '../../components/QuestionCard'
+import { SupportCard } from '../../components/SupportCard'
 import { ErrorState, LoadingState } from '../../components/ui'
 import type { InteractionStatus } from '../../domain/types'
 import { useAction } from '../../hooks/useAction'
@@ -27,21 +28,22 @@ export function WaitingScreen({ interactionId }: { interactionId: string }) {
   if (state.status === 'loading') return <div className="px-4"><LoadingState /></div>
   if (state.status === 'error') return <div className="px-4 pt-10"><ErrorState message={state.error.message} onRetry={reload} /></div>
   const i = state.data
-  const copy = COPY[i.status]
+  const copy = i.show_support ? { title: 'Thank you for sharing', body: '' } : COPY[i.status]
   return (
     <main aria-labelledby="waiting-title" className="flex min-h-dvh flex-col px-4 pt-6">
       <div className="flex-1 space-y-5 pb-6">
         <div className="pt-6 text-center">
           {i.status === 'generating' || i.status === 'awaiting_partner' ? <Envelope animate={i.status === 'generating'} /> : null}
           <h1 id="waiting-title" className="mt-4 text-2xl font-extrabold" aria-live="polite">{copy.title}</h1>
-          <p className="mt-2 text-ink-soft">{copy.body}</p>
+          {copy.body && <p className="mt-2 text-ink-soft">{copy.body}</p>}
         </div>
-        <QuestionCard category={i.category} context={i.context} text={i.question_text} headingLevel={2} />
-        <p className="card text-sm" aria-label="Status">
+        {i.show_support && <SupportCard />}
+        {!i.show_support && <QuestionCard category={i.category} context={i.context} text={i.question_text} headingLevel={2} />}
+        {!i.show_support && <p className="card text-sm" aria-label="Status">
           <span className="font-bold">Status: </span>
           {statusLabel(i)}
           {i.status === 'awaiting_partner' && <span className="block text-ink-soft">Open until {formatDateTime(i.expires_at)}</span>}
-        </p>
+        </p>}
         {(i.status === 'awaiting_partner' || i.status === 'generating') && (
           <p className="rounded-2xl bg-cream-deep p-4 text-sm">
             Your answer stays private. Your partner will never see it, only the shared story made after you both agree.
