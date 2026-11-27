@@ -28,6 +28,7 @@ import { DeleteAccountScreen, RecoverAccountScreen } from '../screens/account/Ac
 import { UnlockScreen } from '../screens/storybook/UnlockScreen'
 import { SERVER_MODE } from '../services/serverMode'
 import { startLiveRefresh } from '../services/remote/client'
+import { finishEmailLink } from '../services/remote/api'
 
 function Shell() {
   const { state } = useService(getPrototypeState)
@@ -118,8 +119,10 @@ export default function App() {
   const [boot, setBoot] = useState<'loading' | 'ready' | 'error'>('loading')
   useEffect(() => {
     if (SERVER_MODE) startLiveRefresh()
-    // Scheduled jobs run on every application load.
-    void runScheduledJobs().then((r) => {
+    // Scheduled jobs run on every application load (after finishing a sign-in link).
+    void (SERVER_MODE ? finishEmailLink() : Promise.resolve())
+      .catch(() => undefined)
+      .then(() => runScheduledJobs()).then((r) => {
       setBoot(r.ok ? 'ready' : 'error')
       // Finish any story whose generation was interrupted when the app closed.
       if (r.ok) void resumeGeneration()

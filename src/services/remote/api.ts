@@ -47,7 +47,16 @@ async function requestOtp(input: RequestOtpInput): Promise<Result<OtpStatus>> {
     return { ok: false, error: { code: 400, message: "You're new here. Confirm you're 18 or older and we'll create your account.", new_account: true } }
   }
   const sb = await supabase()
-  const { error } = await sb.auth.signInWithOtp({ email: id.value, options: { shouldCreateUser: true } })
+  const { error } = await sb.auth.signInWithOtp({
+    email: id.value,
+    options: {
+      shouldCreateUser: true,
+      // Tapping the link in the email lands back here and signs in.
+      emailRedirectTo: `${window.location.origin}/`,
+      // Saved on a new account, so a link opened elsewhere still counts the 18+ tick.
+      data: { is_18_confirmed: input.is_18_confirmed === true },
+    },
+  })
   if (error) {
     const wait = /rate|seconds|security purposes/i.test(error.message)
     return { ok: false, error: { code: wait ? 429 : 400, message: wait ? 'Please wait a minute before asking for another code.' : "We couldn't send a code just now. Please try again." } }
@@ -76,6 +85,21 @@ async function signOutHere(): Promise<Result<true>> {
   updateDevice({ code: null, drafts: {}, pending_invite: null })
   emitChange()
   return { ok: true, data: true }
+}
+
+/**
+ * Arriving from the link in a sign-in email: Supabase reads the token from the
+ * address, then we finish signing in and tidy the address for the app's router.
+ */
+export async function finishEmailLink(): Promise<void> {
+  const h = window.location.hash
+  if (!/access_token=|error_code=/.test(h)) return
+  const sb = await supabase()
+  const { data } = await sb.auth.getSession()
+  window.history.replaceState(null, '', `${window.location.pathname}#/`)
+  if (!data.session) return
+  const res = await rpc('completeSignIn', [{ is_18_confirmed: device().code?.is_18_confirmed === true }])
+  if (res.ok) updateDevice({ code: null })
 }
 
 /** The functions that work differently in server mode. */

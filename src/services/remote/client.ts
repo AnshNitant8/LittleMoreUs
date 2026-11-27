@@ -12,7 +12,9 @@ export function supabase(): Promise<SupabaseClient> {
   if (import.meta.env.VITE_DEV_AUTH === '1') return Promise.resolve(devAuth())
   sbPromise ??= import('@supabase/supabase-js').then(({ createClient }) =>
     createClient(import.meta.env.VITE_SUPABASE_URL as string, import.meta.env.VITE_SUPABASE_ANON_KEY as string, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+      // Implicit flow: the link in the sign-in email works even when it opens
+      // in a different browser from the one that asked for it.
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' },
     }),
   )
   return sbPromise

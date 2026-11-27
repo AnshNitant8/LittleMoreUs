@@ -14,6 +14,8 @@ import { buildDb, diffDb } from './scope'
 export interface Caller {
   auth_id: string
   email: string
+  /** Confirmed 18+ before the sign-in email was sent (kept on the Supabase account). */
+  is_18_confirmed?: boolean
 }
 
 export interface RpcRequest {
@@ -158,7 +160,7 @@ const RELINKED = { ok: false, error: { code: 409, message: 'relinked' } } as unk
  * create one. A new account still needs the 18+ confirmation.
  */
 async function completeSignIn(caller: Caller, input: unknown, deps: RpcDeps): Promise<Result<unknown>> {
-  const is18 = !!input && typeof input === 'object' && (input as { is_18_confirmed?: unknown }).is_18_confirmed === true
+  const is18 = caller.is_18_confirmed === true || (!!input && typeof input === 'object' && (input as { is_18_confirmed?: unknown }).is_18_confirmed === true)
   const db: Db = readDb()
   const meId = activeSession(db).user_id
   if (meId) {

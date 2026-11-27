@@ -25,7 +25,7 @@ const handler = missing.length
         async verify(token) {
           const { data, error } = await sb.auth.getUser(token)
           if (error || !data.user?.email) return null
-          return { auth_id: data.user.id, email: data.user.email.toLowerCase() }
+          return { auth_id: data.user.id, email: data.user.email.toLowerCase(), is_18_confirmed: data.user.user_metadata?.is_18_confirmed === true }
         },
         adminEmails: (env.ADMIN_EMAILS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
         // The older VITE_ name still works; in server mode it never reaches the browser.

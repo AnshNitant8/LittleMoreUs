@@ -88,7 +88,7 @@ export function OtpScreen() {
           className="min-h-14 w-full rounded-2xl border-2 border-line bg-white px-4 text-center font-mono text-2xl tracking-[0.5em] focus:border-coral focus:outline-none"
         />
         {SERVER_MODE ? (
-          <p id="otp-hint" className="text-sm text-ink-soft">The code is in the email we just sent.</p>
+          <p id="otp-hint" className="text-sm text-ink-soft">Type the 6-digit code from the email, or simply tap the sign-in link in it.</p>
         ) : (
           <p id="otp-hint" className="inline-block rounded-md border border-dashed border-proto bg-white px-2 py-1 font-mono text-xs text-proto">
             Prototype: the code is always 123456
