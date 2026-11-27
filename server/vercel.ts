@@ -28,7 +28,8 @@ const handler = missing.length
           return { auth_id: data.user.id, email: data.user.email.toLowerCase() }
         },
         adminEmails: (env.ADMIN_EMAILS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
-        geminiKey: env.GEMINI_API_KEY,
+        // The older VITE_ name still works; in server mode it never reaches the browser.
+        geminiKey: env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY,
         cronSecret: env.CRON_SECRET,
       })
     })()
