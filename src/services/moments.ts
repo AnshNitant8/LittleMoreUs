@@ -3,7 +3,7 @@
 // analytics never include question or answer text.
 
 import { ANSWER_MAX, CATEGORIES, DISTRESS_FLAG_RETENTION_DAYS, SKIP_LIMIT_PER_CATEGORY_PER_DAY } from '../domain/constants'
-import { selectQuestion, eligibleQuestions, type SelectionContext } from '../domain/rules/selection'
+import { coupleOrder, selectQuestion, eligibleQuestions, type SelectionContext } from '../domain/rules/selection'
 import type {
   CategoryId,
   Couple,
@@ -679,7 +679,7 @@ function eligibleGames(db: Db, me: User, couple: Couple): Question[] {
     if (h?.status === 'answered' || h?.status === 'retired') return false
     if (h && (h.status === 'skipped' || h.status === 'dismissed') && Date.parse(h.updated_at) > recent) return false
     return true
-  }).sort((a, b) => a.editorial_order - b.editorial_order)
+  }).sort((a, b) => coupleOrder(couple.couple_id, a.question_id) - coupleOrder(couple.couple_id, b.question_id))
 }
 
 export async function getNextGame(): Promise<Result<NextGame>> {

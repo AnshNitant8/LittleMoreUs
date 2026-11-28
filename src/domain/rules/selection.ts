@@ -28,6 +28,20 @@ export interface SelectionContext {
   nowMs: number
 }
 
+/**
+ * A stable shuffle per couple: each couple gets its own order of questions,
+ * the same on both partners' phones and on every visit, so new couples don't
+ * all start with the same question.
+ */
+export function coupleOrder(coupleId: string, questionId: string): number {
+  let h = 0x811c9dc5
+  for (const ch of `${coupleId}|${questionId}`) {
+    h ^= ch.codePointAt(0)!
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h
+}
+
 /** True if a question's stage tag fits the household band ("other" uses general questions only). */
 export function stageMatches(q: Question, band: AgeBand | null): boolean {
   const tags = q.stage_tags as string[]
@@ -66,7 +80,7 @@ export function eligibleQuestions(ctx: SelectionContext, category?: CategoryId):
 /**
  * Pick the single best question. Balancing: never two high-intensity prompts in
  * a row for the couple; rotate categories against the recent mix; then
- * editorial order.
+ * the couple's own shuffled order.
  */
 export function selectQuestion(ctx: SelectionContext, opts: { category?: CategoryId; preferred?: CategoryId[] } = {}): Question | null {
   let pool = eligibleQuestions(ctx, opts.category)
@@ -84,7 +98,7 @@ export function selectQuestion(ctx: SelectionContext, opts: { category?: Categor
     (a, b) =>
       uses(a.category) - uses(b.category) ||
       lastSeen(a.category) - lastSeen(b.category) ||
-      a.editorial_order - b.editorial_order ||
+      coupleOrder(ctx.coupleId, a.question_id) - coupleOrder(ctx.coupleId, b.question_id) ||
       a.question_id.localeCompare(b.question_id),
   )[0]
 }

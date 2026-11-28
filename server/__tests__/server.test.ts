@@ -38,7 +38,9 @@ function fakeAi() {
   const ai: AiClient = {
     available: true,
     async generateStory(req) {
-      return { output: { story_text: `${req.parent_a_label}, ${req.parent_b_label}, I heard you both remember it. I like that you each kept a piece.`, intent_used: req.story_intent }, model: 'fake-lite' }
+      // Questions come in a shuffled order per couple, so fit the wording to the intent.
+      const end = req.story_intent === 'future_plan' ? 'I hope you might do it together soon.' : req.story_intent === 'memory' ? 'I like that you each remembered a piece.' : 'I like that you each shared a piece.'
+      return { output: { story_text: `${req.parent_a_label}, ${req.parent_b_label}, I heard you both. ${end}`, intent_used: req.story_intent }, model: 'fake-lite' }
     },
     async classifyDistress() {
       return false
