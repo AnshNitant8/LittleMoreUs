@@ -139,13 +139,15 @@ export async function runSelftest(base: { gateway: Gateway; adminEmails: string[
       const v = await a.call<{ status: string; story_id: string | null }>('getInteraction', momentId)
       expect(v.status === 'completed' && v.story_id, `moment status ${v.status}`)
       storyId = v.story_id!
-      const sa = await a.call<{ text: string }>('getStory', storyId)
+      const sa = await a.call<{ text: string; suggestion: string | null }>('getStory', storyId)
+      expect(sa.suggestion, 'no "small idea" on the story')
       const sb = await b.call<{ text: string }>('getStory', storyId)
       expect(sa.text && sa.text === sb.text, 'partners see different stories')
       storyText = sa.text
       const status = admin ? await admin.call<{ recent: { story_id: string; source: string; fallback_reason: string | null }[] }>('getAiStatus') : null
       const mine = status?.recent.find((r) => r.story_id === storyId)
-      return mine ? (mine.fallback_reason ? `fallback story, reason: ${mine.fallback_reason}` : `written by ${mine.source}`) : undefined
+      const idea = ` · small idea: "${sa.suggestion}"`
+      return mine ? (mine.fallback_reason ? `fallback story, reason: ${mine.fallback_reason}${idea}` : `written by ${mine.source}${idea}`) : idea
     })
 
     await step('Gemini answers from the live server', async () => {
