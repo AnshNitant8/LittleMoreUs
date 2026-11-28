@@ -317,55 +317,12 @@ begin
   return total;
 end $$;
 
--- Sign-in codes the app emails itself: only a salted hash is kept, for 10 minutes.
-create table if not exists app_signin_codes (
-  email text primary key,
-  code_hash text not null,
-  is_18 boolean not null default false,
-  attempts integer not null default 0,
-  sent_at timestamptz not null default now(),
-  expires_at timestamptz not null
-);
-alter table app_signin_codes enable row level security;
-
--- Store a new code unless one was sent in the last 60 seconds. Returns seconds to wait (0 = stored).
-create or replace function app_code_issue(p_email text, p_hash text, p_is_18 boolean)
-returns integer language plpgsql set search_path = public as $$
-declare last timestamptz;
-begin
-  delete from app_signin_codes where expires_at < now() - interval '1 day';
-  select sent_at into last from app_signin_codes where email = p_email for update;
-  if last is not null and last > now() - interval '60 seconds' then
-    return greatest(1, 60 - extract(epoch from now() - last)::integer);
-  end if;
-  insert into app_signin_codes (email, code_hash, is_18, attempts, sent_at, expires_at)
-    values (p_email, p_hash, p_is_18, 0, now(), now() + interval '10 minutes')
-    on conflict (email) do update set code_hash = excluded.code_hash, is_18 = excluded.is_18, attempts = 0, sent_at = now(), expires_at = excluded.expires_at;
-  return 0;
-end $$;
-
--- Check a typed code: ok (and used up), wrong, expired or locked (5 wrong tries).
-create or replace function app_code_check(p_email text, p_hash text)
-returns jsonb language plpgsql set search_path = public as $$
-declare r app_signin_codes;
-begin
-  select * into r from app_signin_codes where email = p_email for update;
-  if r is null or r.expires_at < now() then return jsonb_build_object('status', 'expired'); end if;
-  if r.attempts >= 5 then return jsonb_build_object('status', 'locked'); end if;
-  if r.code_hash <> p_hash then
-    update app_signin_codes set attempts = attempts + 1 where email = p_email;
-    return jsonb_build_object('status', 'wrong', 'attempts_left', 4 - r.attempts);
-  end if;
-  delete from app_signin_codes where email = p_email;
-  return jsonb_build_object('status', 'ok', 'is_18', r.is_18);
-end $$;
-
 -- Only the server's service role may call these.
 do $$
 declare f text;
 begin
   if exists (select 1 from pg_roles where rolname = 'service_role') then
-    foreach f in array array['app_load_scope(text,text)', 'app_load_all()', 'app_account_exists(text)', 'app_link_auth(text,text)', 'app_commit(jsonb)', 'app_selftest_cleanup()', 'app_code_issue(text,text,boolean)', 'app_code_check(text,text)'] loop
+    foreach f in array array['app_load_scope(text,text)', 'app_load_all()', 'app_account_exists(text)', 'app_link_auth(text,text)', 'app_commit(jsonb)', 'app_selftest_cleanup()'] loop
       execute format('revoke all on function %s from public, anon, authenticated', f);
       execute format('grant execute on function %s to service_role', f);
     end loop;

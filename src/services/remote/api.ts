@@ -13,9 +13,8 @@ type Api = typeof L
 type Fn<K extends keyof Api> = Api[K]
 
 const RESEND_SEC = 60
-/** Supabase's default lifetime for its emailed link; the app's own codes last 10 minutes. */
+/** Supabase's default lifetime for an emailed code. */
 const CODE_TTL_MS = 60 * 60_000
-const OWN_CODE_TTL_MS = 10 * 60_000
 const notHere = <T>(): Promise<Result<T>> => Promise.resolve({ ok: false, error: { code: 400, message: 'Not available on the live app.' } })
 
 /** The plain server call for `name`, typed like the local function. */
@@ -30,7 +29,7 @@ function codeStatus(): OtpStatus | null {
   return {
     identifier: c.identifier,
     mode: c.mode,
-    expires_at: new Date(c.sent_at + (c.own ? OWN_CODE_TTL_MS : CODE_TTL_MS)).toISOString(),
+    expires_at: new Date(c.sent_at + CODE_TTL_MS).toISOString(),
     resend_available_in_sec: Math.max(0, RESEND_SEC - elapsed),
     locked_until: null,
     attempts_left: 5,
@@ -47,13 +46,6 @@ async function requestOtp(input: RequestOtpInput): Promise<Result<OtpStatus>> {
   if (mode === 'signup' && input.is_18_confirmed !== true) {
     return { ok: false, error: { code: 400, message: "You're new here. Confirm you're 18 or older and we'll create your account.", new_account: true } }
   }
-  // The app's own 6-digit code email, when the server has an email account set up.
-  const own = await rpc<{ ttl_min: number }>('sendSignInCode', [{ email: id.value, is_18_confirmed: input.is_18_confirmed === true }])
-  if (own.ok) {
-    updateDevice({ code: { identifier: id.value, mode, is_18_confirmed: input.is_18_confirmed === true, sent_at: Date.now(), own: true } })
-    return { ok: true, data: codeStatus()! }
-  }
-  if (own.error.message !== 'not_configured') return own
   const sb = await supabase()
   const { error } = await sb.auth.signInWithOtp({
     email: id.value,
@@ -77,16 +69,8 @@ async function verifyOtp(input: { code: string; idempotencyKey: string }): Promi
   const c = device().code
   if (!c) return { ok: false, error: { code: 401, message: 'Please request a code first.' } }
   const sb = await supabase()
-  const token = (input.code ?? '').replace(/\s/g, '')
-  if (c.own) {
-    const v = await rpc<{ access_token: string; refresh_token: string }>('verifySignInCode', [{ email: c.identifier, code: token }])
-    if (!v.ok) return v
-    const { error } = await sb.auth.setSession(v.data)
-    if (error) return { ok: false, error: { code: 400, message: "We couldn't finish signing in. Please ask for a new code." } }
-  } else {
-    const { error } = await sb.auth.verifyOtp({ email: c.identifier, token, type: 'email' })
-    if (error) return { ok: false, error: { code: 400, message: "That code didn't match or has expired. Check the latest email, or ask for a new code." } }
-  }
+  const { error } = await sb.auth.verifyOtp({ email: c.identifier, token: (input.code ?? '').replace(/\s/g, ''), type: 'email' })
+  if (error) return { ok: false, error: { code: 400, message: "That code didn't match or has expired. Check the latest email, or ask for a new code." } }
   const res = await rpc<User>('completeSignIn', [{ is_18_confirmed: c.is_18_confirmed }])
   if (res.ok) {
     updateDevice({ code: null })

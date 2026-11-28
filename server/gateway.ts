@@ -17,12 +17,7 @@ export interface Gateway {
   cleanupSelftest(prefix: string): Promise<number>
   /** Saves all ops or none. Throws ConflictError if a record changed since it was read. */
   commit(ops: Op[]): Promise<{ erased_auth_ids: string[] }>
-  /** Stores a sign-in code hash; returns seconds to wait if one was sent within a minute. */
-  codeIssue(email: string, hash: string, is18: boolean): Promise<number>
-  codeCheck(email: string, hash: string): Promise<CodeCheck>
 }
-
-export type CodeCheck = { status: 'ok'; is_18: boolean } | { status: 'wrong'; attempts_left: number } | { status: 'expired' | 'locked' }
 
 /** Minimal SQL runner shape shared by PGlite and node-postgres style clients. */
 export interface SqlRunner {
@@ -40,8 +35,6 @@ export function sqlGateway(db: SqlRunner): Gateway {
     accountExists: (id) => one('select app_account_exists($1) as r', [id]),
     linkAuth: (id, auth) => one('select app_link_auth($1, $2) as r', [id, auth]),
     cleanupSelftest: () => one('select app_selftest_cleanup() as r', []),
-    codeIssue: (email, hash, is18) => one('select app_code_issue($1, $2, $3) as r', [email, hash, is18]),
-    codeCheck: (email, hash) => one('select app_code_check($1, $2) as r', [email, hash]),
     async commit(ops) {
       try {
         return await one('select app_commit($1) as r', [JSON.stringify(ops)])

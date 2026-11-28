@@ -20,8 +20,6 @@ export function supabaseGateway(sb: SupabaseClient): Gateway {
     accountExists: (identifier) => call('app_account_exists', { p_identifier: identifier }),
     cleanupSelftest: () => call('app_selftest_cleanup', {}),
     linkAuth: (identifier, authId) => call('app_link_auth', { p_identifier: identifier, p_auth_id: authId }),
-    codeIssue: (email, hash, is18) => call('app_code_issue', { p_email: email, p_hash: hash, p_is_18: is18 }),
-    codeCheck: (email, hash) => call('app_code_check', { p_email: email, p_hash: hash }),
     async commit(ops) {
       const res = await call<{ erased_auth_ids: string[] }>('app_commit', { p_ops: ops })
       // Erased accounts also lose their sign-in.
