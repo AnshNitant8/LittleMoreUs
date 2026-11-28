@@ -6,7 +6,7 @@ import type { CategoryId, Result, Story } from '../domain/types'
 import { formatDate, localDay } from '../utils/time'
 import { DURATION, nowIso, nowMs } from './clock'
 import { activeCoupleOf, fail, mutate, query, registerJob, requireUser, track } from './core'
-import { storyLocked, unlockedBy } from './entitlement'
+import { FREE_STORIES, storyLocked, unlockedBy } from './entitlement'
 import type { Db } from './storage'
 import { requireVisibleStory } from './stories'
 
@@ -17,6 +17,8 @@ export interface StoryCard {
   /** Category plus date. */
   title: string
   category: CategoryId
+  /** The question this story answered (shown on locked cards too; never the story itself). */
+  question: string
   created_at: string
   saved: boolean
   locked: boolean
@@ -31,6 +33,10 @@ export interface StorybookView {
   recent: StoryCard[]
   unlocked: boolean
   free_window_days: number
+  /** Stories a couple can read without the unlock. */
+  free_stories: number
+  /** How many of our stories are locked right now. */
+  locked_count: number
   recent_days: number
 }
 
@@ -57,6 +63,7 @@ function card(db: Db, s: Story, userId: string): StoryCard {
     story_id: s.story_id,
     title: storyTitle(db, s),
     category: s.category,
+    question: s.question_text_snapshot,
     created_at: s.created_at,
     saved: s.saved,
     locked,
@@ -69,9 +76,13 @@ export async function listStories(): Promise<Result<StorybookView>> {
   return query((db) => {
     const me = requireUser(db)
     const all = myStories(db, me.user_id)
+    const saved = all.filter((s) => s.saved).map((s) => card(db, s, me.user_id))
+    const recent = all.filter((s) => !s.saved).map((s) => card(db, s, me.user_id))
     return {
-      saved: all.filter((s) => s.saved).map((s) => card(db, s, me.user_id)),
-      recent: all.filter((s) => !s.saved).map((s) => card(db, s, me.user_id)),
+      saved,
+      recent,
+      free_stories: FREE_STORIES,
+      locked_count: [...saved, ...recent].filter((c) => c.locked).length,
       unlocked: unlockedBy(db, me.user_id) !== null,
       free_window_days: db.flags.free_window_days,
       recent_days: db.flags.recent_days,

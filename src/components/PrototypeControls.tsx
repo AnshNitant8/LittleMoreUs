@@ -316,19 +316,6 @@ function FlagsPanel({ flags }: { flags: FeatureFlags }) {
             </label>
           </li>
         ))}
-        <li>
-          <label className="flex min-h-11 items-center justify-between gap-2">
-            <span>free_window_days</span>
-            <select
-              className="min-h-11 rounded bg-slate-700 px-2"
-              value={flags.free_window_days}
-              onChange={(e) => set({ free_window_days: Number(e.target.value) as 5 | 30 })}
-            >
-              <option value={5}>5</option>
-              <option value={30}>30</option>
-            </select>
-          </label>
-        </li>
         {nums.map((k) => (
           <li key={k}>
             <label className="flex min-h-11 items-center justify-between gap-2">

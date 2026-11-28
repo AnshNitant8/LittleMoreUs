@@ -30,6 +30,19 @@ export function StorybookScreen() {
       {state.status === 'error' && <ErrorState message={state.error.message} onRetry={reload} />}
       {state.status === 'ready' && (
         <>
+          {!state.data.unlocked && state.data.locked_count > 0 && (
+            <div className="card space-y-3 border-2 border-coral-tint">
+              <p className="font-extrabold">
+                {state.data.locked_count} more {state.data.locked_count === 1 ? 'story is' : 'stories are'} waiting for you two
+              </p>
+              <p className="text-sm text-ink-soft">
+                {state.data.free_stories} of your stories are free to read. Unlock the full Storybook to read every one, now and as it grows.
+              </p>
+              <button type="button" className="btn-primary" onClick={() => navigate('unlock')}>
+                Unlock {state.data.locked_count} more {state.data.locked_count === 1 ? 'story' : 'stories'}
+              </button>
+            </div>
+          )}
           <section aria-labelledby="saved-title" className="space-y-3">
             <h2 id="saved-title" className="text-lg font-extrabold">Saved stories</h2>
             {state.data.saved.length === 0 ? (
@@ -63,7 +76,7 @@ export function StorybookScreen() {
             ) : (
               <>
                 <p className="text-sm text-ink-soft">
-                  Stories from the last {state.data.free_window_days} days are free to read. Older ones are kept safe and never deleted. Unlocking also lets you delete stories.
+                  {state.data.free_stories} of your stories are free to read, and every new story is open on the day it's made. The rest are kept safe and never deleted. Unlocking also lets you delete stories.
                 </p>
                 <button type="button" className="btn-secondary" onClick={() => navigate('unlock')}>Unlock full Storybook</button>
                 <button type="button" className="btn-ghost w-full" onClick={() => navigate('book', 'sample')}>See a sample Storybook book</button>
@@ -102,6 +115,8 @@ function StoryRow({ story, canDelete }: { story: StoryCard; canDelete: boolean }
       >
         <span className="block font-extrabold">{story.title}</span>
         {story.locked ? (
+          <>
+          <span className="mt-1 block italic text-ink">“{story.question}”</span>
           <span className="mt-1 flex items-center gap-2 text-sm text-ink-soft">
             <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="5" y="11" width="14" height="10" rx="2" />
@@ -109,6 +124,7 @@ function StoryRow({ story, canDelete }: { story: StoryCard; canDelete: boolean }
             </svg>
             Locked · tap to unlock
           </span>
+          </>
         ) : (
           <span className="mt-1 block text-ink">{story.preview}</span>
         )}

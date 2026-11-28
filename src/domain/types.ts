@@ -129,6 +129,8 @@ export interface Couple {
   created_at: ISODate
   disconnected_at: ISODate | null
   daily_counter: { date: string; count: number }
+  /** The couple's free stories (up to 3), kept once given so they never get locked later. */
+  free_story_ids?: string[]
 }
 
 export interface Invitation {

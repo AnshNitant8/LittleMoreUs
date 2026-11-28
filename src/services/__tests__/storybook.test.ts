@@ -43,11 +43,15 @@ async function makeStory(q: { question_id: string } | null = memoryQ, a = 'Danci
   return readDb().stories.find((s) => s.interaction_id === c.data.interaction_id)!.story_id
 }
 
+/** Saves 4 stories and lets a day pass: 3 stay free, the 4th is locked. Returns the 4th. */
 async function lockedSavedStory() {
-  await updateFlags({ free_window_days: 5 })
-  const id = await makeStory()
-  await saveStory({ story_id: id, idempotencyKey: k() })
-  await advanceClock(120) // +5 days
+  let id = ''
+  for (let i = 0; i < 4; i++) {
+    id = await makeStory(null, `Answer ${i} from A`, `Answer ${i} from B`)
+    await saveStory({ story_id: id, idempotencyKey: k() })
+  }
+  await advanceClock(24)
+  await advanceClock(1)
   return id
 }
 
@@ -82,7 +86,7 @@ describe('Storybook timeline and Recent (acceptance 10)', () => {
     expect(r.data.saved.map((s) => s.story_id)).toEqual([saved])
   })
 
-  it('locks saved stories outside the free window, never deletes them, and hides their text', async () => {
+  it('locks stories beyond the 3 free ones, never deletes them, and hides their text', async () => {
     await pairedCouple()
     const id = await lockedSavedStory()
     for (let i = 0; i < 6; i++) await advanceClock(168)
@@ -106,7 +110,7 @@ describe('Storybook timeline and Recent (acceptance 10)', () => {
     expect((await deleteStory({ story_id: id, idempotencyKey: k() })).ok).toBe(true)
     await switchUser('A')
     const r = await listStories()
-    expect(r.ok && r.data.saved).toHaveLength(0)
+    expect(r.ok && r.data.saved).toHaveLength(3)
     expect(readDb().reactions.some((x) => x.story_id === id)).toBe(false)
   })
 })
@@ -148,7 +152,7 @@ describe('QR paywall and manual verification (acceptance 11)', () => {
     expect((await getStory(id)).ok).toBe(false)
     const e = await getEntitlement()
     expect(e.ok && e.data).toMatchObject({ unlocked: false, my_status: 'rejected' })
-    expect(readDb().stories).toHaveLength(1)
+    expect(readDb().stories).toHaveLength(4)
     expect((await submitPaymentReference({ payment_reference: 'REF-000003', idempotencyKey: k() })).ok).toBe(true)
   })
 
@@ -161,7 +165,7 @@ describe('QR paywall and manual verification (acceptance 11)', () => {
     expect(JSON.stringify(a.ok && a.data)).not.toContain('SECRETREF99')
   })
 
-  it("belongs to the purchaser: after a disconnect the other partner returns to the free window", async () => {
+  it("belongs to the purchaser: after a disconnect the other partner is back to the free stories", async () => {
     await pairedCouple()
     const id = await lockedSavedStory()
     const q0 = await submitPaymentReference({ payment_reference: 'BUYER-REF-1', idempotencyKey: k() }) // B buys
@@ -252,5 +256,39 @@ describe('the Storybook book and your own words', () => {
     expect(readDb().stories[0].keepsake_words).toHaveProperty(readDb().slots.B.user_id!)
     await setKeepsakeWords({ story_id: id, include: false, idempotencyKey: k() })
     expect(Object.keys(readDb().stories[0].keepsake_words ?? {})).toHaveLength(0)
+  })
+})
+
+describe('3 free stories', () => {
+  it('keeps the same 3 free for both partners, opens a new story on its first day, and shows locked ones by question only', async () => {
+    await pairedCouple()
+    const ids: string[] = []
+    for (let i = 0; i < 3; i++) {
+      ids.push(await makeStory(null, `A ${i}`, `B ${i}`))
+      await saveStory({ story_id: ids[i], idempotencyKey: k() })
+    }
+    const fourth = await makeStory(null, 'A 3', 'B 3')
+    expect((await getStory(fourth)).ok).toBe(true) // new stories are open on their first day
+    await saveStory({ story_id: fourth, idempotencyKey: k() })
+    await advanceClock(24)
+    await advanceClock(1)
+    for (const who of ['A', 'B'] as const) {
+      await switchUser(who)
+      const r = await listStories()
+      if (!r.ok) throw new Error()
+      const locked = r.data.saved.filter((c) => c.locked)
+      expect(locked.map((c) => c.story_id)).toEqual([fourth])
+      expect(locked[0].preview).toBeNull()
+      expect(locked[0].question).toBeTruthy()
+      expect(r.data).toMatchObject({ free_stories: 3, locked_count: 1 })
+      for (const id of ids) expect((await getStory(id)).ok).toBe(true)
+      const g = await getStory(fourth)
+      expect(!g.ok && g.error).toMatchObject({ code: 403, locked: true })
+    }
+    // Months later the free ones are still free.
+    for (let i = 0; i < 8; i++) await advanceClock(168)
+    expect((await getStory(ids[0])).ok).toBe(true)
+    const e = await getEntitlement()
+    expect(e.ok && e.data).toMatchObject({ free_stories: 3, locked_count: 1 })
   })
 })

@@ -11,7 +11,7 @@ import { ALL_QUESTIONS } from '../data/questions'
 import { newId } from '../utils/id'
 import { DURATION, nowIso, nowMs } from './clock'
 import { cachedResult, fail, mutate, query, requireUser, track } from './core'
-import { storyLocked } from './entitlement'
+import { keepFreeStories, storyLocked } from './entitlement'
 import { getAiClient, type StoryRequest } from './gemini'
 import { notify } from './notify'
 import { readDb } from './storage'
@@ -148,6 +148,7 @@ export async function completeWithStory(interactionId: string): Promise<Result<S
     const couple = db.couples.find((c) => c.couple_id === i.couple_id)!
     const story = newStory(i, prepared.intent, composed, null)
     db.stories.push(story)
+    keepFreeStories(db, couple.couple_id)
     i.status = 'completed'
     // Raw answers are hard-deleted 24 hours after generation.
     const deleteAfter = new Date(nowMs() + RAW_ANSWER_RETENTION_MS).toISOString()
@@ -276,6 +277,7 @@ export async function saveStory(input: { story_id: string; idempotencyKey: strin
     const me = requireUser(db)
     const s = requireReadableStory(db, input.story_id, me.user_id)
     s.saved = true
+    keepFreeStories(db, s.couple_id)
     track(db, 'story_saved', { story_id: s.story_id, category: s.category })
     return storyView(db, s, me.user_id)
   })
@@ -351,6 +353,7 @@ export async function regenerateStory(input: { story_id: string; idempotencyKey:
     old.regenerate_used = true
     if (!old.saved) db.stories = db.stories.filter((x) => x.story_id !== old.story_id)
     db.stories.push(fresh)
+    keepFreeStories(db, fresh.couple_id)
     track(db, 'story_regenerated', { story_id: fresh.story_id, from: old.story_id, is_fallback: fresh.is_fallback })
     return storyView(db, fresh, me.user_id)
   })

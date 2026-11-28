@@ -22,17 +22,52 @@ export function unlockedBy(db: Db, userId: string): 'me' | 'partner' | null {
   return null
 }
 
-export function withinFreeWindow(db: Db, s: Story): boolean {
-  return nowMs() - Date.parse(s.created_at) < db.flags.free_window_days * DURATION.DAY
+/** Without the unlock, a couple can read this many of their stories. */
+export const FREE_STORIES = 3
+/** A brand-new story can always be read for its first day, so the moment itself is never locked. */
+const NEW_STORY_OPEN_MS = 24 * DURATION.HOUR
+
+/** Order for filling free places: saved stories first, then oldest first. */
+function candidates(db: Db, coupleId: string): Story[] {
+  return db.stories
+    .filter((s) => s.couple_id === coupleId && !s.quarantined)
+    .sort((a, b) => Number(b.saved) - Number(a.saved) || a.created_at.localeCompare(b.created_at))
 }
 
 /**
- * A story is readable within the free window, or with an unlock. A partner's
- * unlock only covers stories of the couple they are in with the purchaser, so
- * after a disconnect the non-purchasing partner returns to the free window.
+ * The couple's free stories. Once a story is given a free place it keeps it
+ * (both partners see the same ones). A place only opens again if that story
+ * is gone (an unsaved story that expired), and is then given to the next story.
+ */
+export function freeStoryIds(db: Db, coupleId: string): Set<string> {
+  const couple = db.couples.find((c) => c.couple_id === coupleId)
+  const all = candidates(db, coupleId)
+  const alive = new Set(all.map((s) => s.story_id))
+  const ids = (couple?.free_story_ids ?? []).filter((id) => alive.has(id)).slice(0, FREE_STORIES)
+  for (const s of all) {
+    if (ids.length >= FREE_STORIES) break
+    if (!ids.includes(s.story_id)) ids.push(s.story_id)
+  }
+  return new Set(ids)
+}
+
+/** Writes the free places down so they stay the same. Call after stories are added, saved or removed. */
+export function keepFreeStories(db: Db, coupleId: string) {
+  const couple = db.couples.find((c) => c.couple_id === coupleId)
+  if (couple) couple.free_story_ids = [...freeStoryIds(db, coupleId)]
+}
+
+export function isNewStory(s: Story): boolean {
+  return nowMs() - Date.parse(s.created_at) < NEW_STORY_OPEN_MS
+}
+
+/**
+ * Without the unlock, a couple can read 3 of their stories (and any story on
+ * its first day). A partner's unlock only covers stories of the couple they
+ * are in with the purchaser.
  */
 export function storyLocked(db: Db, s: Story, userId: string): boolean {
-  if (withinFreeWindow(db, s)) return false
+  if (isNewStory(s) || freeStoryIds(db, s.couple_id).has(s.story_id)) return false
   if (hasActive(db, userId)) return false
   const couple = activeCoupleOf(db, userId)
   if (couple && couple.couple_id === s.couple_id && hasActive(db, partnerIdOf(couple, userId))) return false
@@ -42,10 +77,20 @@ export function storyLocked(db: Db, s: Story, userId: string): boolean {
 export interface EntitlementView {
   price: string
   free_window_days: number
+  /** Stories a couple can read without the unlock. */
+  free_stories: number
+  /** My couple's stories that are locked right now. */
+  locked_count: number
   unlocked: boolean
   unlocked_by: 'me' | 'partner' | null
   /** Status of my most recent purchase, if any. */
   my_status: EntitlementStatus | null
+}
+
+function lockedCount(db: Db, userId: string): number {
+  const couple = activeCoupleOf(db, userId)
+  if (!couple) return 0
+  return db.stories.filter((s) => s.couple_id === couple.couple_id && !s.quarantined && !s.hidden_for_user_ids.includes(userId) && storyLocked(db, s, userId)).length
 }
 
 function latestOf(db: Db, userId: string): Entitlement | null {
@@ -58,6 +103,8 @@ function viewFor(db: Db, userId: string): EntitlementView {
   return {
     price: STORYBOOK_PRICE_LABEL,
     free_window_days: db.flags.free_window_days,
+    free_stories: FREE_STORIES,
+    locked_count: lockedCount(db, userId),
     unlocked: by !== null,
     unlocked_by: by,
     my_status: hasActive(db, userId) ? 'active' : (latestOf(db, userId)?.status ?? null),

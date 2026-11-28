@@ -214,7 +214,7 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     stage: 6,
     topic: 'Free window',
-    text: 'A story is free to read for free_window_days (30 by default, 5 in Prototype Controls) from the day it was written. After that it shows as a locked preview with only its category and date, and is never deleted.',
+    text: 'Without the unlock, a couple can read 3 of their stories (saved ones get the places first, then the oldest), and any story on the day it is made. The 3 places are kept once given, so a free story never becomes locked; a place opens again only if its unsaved story expires. Every other story shows as a locked card with its category, date and question only, and is never deleted.',
   },
   {
     stage: 6,

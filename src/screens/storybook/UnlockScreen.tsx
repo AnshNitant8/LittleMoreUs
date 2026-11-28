@@ -37,7 +37,7 @@ export function UnlockScreen({ lockedStory = false }: { lockedStory?: boolean })
       return (
         <div role="status" className="card space-y-2">
           <p className="font-extrabold">We're checking your payment</p>
-          <p className="text-ink-soft">Older stories stay locked until it is confirmed. Nothing is deleted while you wait.</p>
+          <p className="text-ink-soft">Locked stories stay locked until it is confirmed. Nothing is deleted while you wait.</p>
           <p className="text-sm text-ink-soft">Payment verification is manual in this prototype.</p>
         </div>
       )
@@ -81,14 +81,14 @@ export function UnlockScreen({ lockedStory = false }: { lockedStory?: boolean })
   return (
     <main aria-labelledby="unlock-title" className="space-y-5 px-4 pb-10 pt-6">
       <h1 id="unlock-title" className="screen-title">Unlock your full Storybook</h1>
-      {lockedStory && <p className="text-ink-soft">This story is older than your free window, so it's kept safe in your locked Storybook.</p>}
+      {lockedStory && <p className="text-ink-soft">This story is kept safe in your locked Storybook. You can read {state.status === 'ready' ? state.data.free_stories : 3} of your stories for free, and the full Storybook opens all of them.</p>}
       <div className="card space-y-2">
         <p>
           A one-time payment of <strong>INR 299</strong> unlocks the full Storybook for both of you while you're paired with the person who paid.
         </p>
         <ul className="list-disc space-y-1 pl-5 text-sm text-ink-soft">
           <li>Your Storybook as a keepsake book: chapters by month, every saved story, your small ideas, and your own words if you each choose to add them</li>
-          <li>Every story, however old, open to read</li>
+          <li>{state.status === 'ready' && state.data.locked_count > 0 ? `Your ${state.data.locked_count} locked ${state.data.locked_count === 1 ? 'story' : 'stories'}, and every story you make from now on, open to read` : 'Every story, not just your 3 free ones, open to read'}</li>
           <li>Print it or save it as a PDF, export your stories, and delete stories</li>
         </ul>
         <p className="text-sm text-ink-soft">Stories are never deleted because you haven't paid.</p>
