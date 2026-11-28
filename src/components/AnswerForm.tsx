@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { ANSWER_MAX } from '../domain/constants'
+import { VoiceButton } from './VoiceButton'
 import { getDraft, saveDraft } from '../services/api'
 
 /**
@@ -68,9 +69,12 @@ export function AnswerFields({
           className="w-full rounded-2xl border-2 border-line bg-white p-4 text-lg leading-relaxed focus:border-coral focus:outline-none"
           placeholder="A few words is plenty."
         />
-        <p id={`${id}-count`} aria-live="polite" className={`text-right text-sm ${over ? 'font-bold text-coral' : 'text-ink-soft'}`}>
-          {count} / {ANSWER_MAX}
-        </p>
+        <div className="mt-1 flex items-start justify-between gap-3">
+          <VoiceButton text={text} setText={setText} disabled={disabled} />
+          <p id={`${id}-count`} aria-live="polite" className={`ml-auto text-right text-sm ${over ? 'font-bold text-coral' : 'text-ink-soft'}`}>
+            {count} / {ANSWER_MAX}
+          </p>
+        </div>
       </div>
       <p id={`${id}-notice`} className="rounded-2xl bg-cream-deep p-4 text-sm">
         Your partner will receive this exact same question; both answers will be used to create a shared story only after you both agree.
