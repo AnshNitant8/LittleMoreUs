@@ -111,6 +111,33 @@ export function validateStory(input: StoryValidationInput): StoryProblem[] {
   return problems
 }
 
+export const MAX_SUGGESTION_CHARS = 220
+
+/**
+ * The optional "small idea" from the model: one or two short sentences, no
+ * links, no advice words, no names that aren't in the inputs. Returns true if
+ * it can be shown; otherwise the ready-written idea is used instead.
+ */
+export function suggestionOk(text: string, input: Pick<StoryValidationInput, 'labels' | 'question' | 'context' | 'answers'>): boolean {
+  const t = text.trim()
+  if (t.length < 15 || t.length > MAX_SUGGESTION_CHARS) return false
+  const sentences = splitSentences(t)
+  if (sentences.length > 2) return false
+  if (/https?:|www\.|@/i.test(t)) return false
+  // A word the question itself uses (e.g. "lazy Sunday") is fine to repeat.
+  const asked = `${input.question} ${input.context}`.toLowerCase()
+  if (PROHIBITED.some((re) => { const m = re.exec(t); return !!m && !asked.includes(m[0].toLowerCase()) })) return false
+  if (/\b(relationship advice|couples?|marriage|divorce|parenting tip|app|download|buy|book a)\b/i.test(t)) return false
+  const known = new Set([...words(`${input.question} ${input.context} ${input.answers.join(' ')}`), ...input.labels.flatMap((l) => words(l))])
+  for (const sentence of sentences) {
+    for (const tok of (sentence.match(/[\p{L}'’]+/gu) ?? []).slice(1)) {
+      const clean = tok.replace(/[’']s$/, '')
+      if (/^\p{Lu}/u.test(clean) && !ALLOWED_CAPITALISED.has(clean) && !known.has(clean.toLowerCase())) return false
+    }
+  }
+  return true
+}
+
 /** Labels to pass to the model: when labels match case-insensitively, add first names. */
 export function storyLabels(a: { label: string; name: string }, b: { label: string; name: string }): [string, string] {
   if (a.label.trim().toLowerCase() === b.label.trim().toLowerCase()) {

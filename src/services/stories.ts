@@ -4,7 +4,8 @@
 
 import { FALLBACK_STORIES } from '../data/fallbackStories'
 import { REGENERATE_WINDOW_HOURS } from '../domain/constants'
-import { storyLabels, validateStory } from '../domain/rules/storyValidation'
+import { storyLabels, suggestionOk, validateStory } from '../domain/rules/storyValidation'
+import { fallbackSuggestion } from '../data/suggestions'
 import type { Interaction, ReactionValue, Report, ReportReason, Result, Story, StoryIntent } from '../domain/types'
 import { ALL_QUESTIONS } from '../data/questions'
 import { newId } from '../utils/id'
@@ -16,7 +17,7 @@ import { notify } from './notify'
 import { readDb } from './storage'
 import type { Db } from './storage'
 
-export const PROMPT_VERSION = 'story-v1'
+export const PROMPT_VERSION = 'story-v2'
 export const REACTIONS: ReactionValue[] = ['❤️', '😂', '🥹', '🌟']
 const RAW_ANSWER_RETENTION_MS = 24 * DURATION.HOUR
 
@@ -26,6 +27,8 @@ interface Composed {
   model_name: string
   /** Why the fallback library was used (metadata only, never story or answer text). */
   fallback_reason: string | null
+  suggestion: string
+  suggestion_is_fallback: boolean
 }
 
 /** Short, text-free label for a failed Gemini call. */
@@ -42,6 +45,7 @@ export function classifyAiError(e: unknown): string {
 }
 
 interface Prepared {
+  question_id: string
   intent: StoryIntent
   request: StoryRequest
   labels: [string, string]
@@ -71,6 +75,7 @@ function prepare(db: Db, interactionId: string, opts: { allowCompleted?: boolean
   if (!ua || !ub) return null
   const labels = storyLabels({ label: ua.parent_label, name: ua.display_name }, { label: ub.parent_label, name: ub.display_name })
   return {
+    question_id: i.question_id,
     intent: i.story_intent,
     labels,
     request: {
@@ -104,7 +109,11 @@ async function composeStory(p: Prepared, interactionId: string): Promise<Compose
           context: p.request.context,
           answers: [p.request.answer_from_parent_a, p.request.answer_from_parent_b],
         })
-        if (problems.length === 0) return { text, is_fallback: false, model_name: model, fallback_reason: null }
+        if (problems.length === 0) {
+          const idea = (output.suggestion ?? '').replace(/\s+/g, ' ').trim()
+          const ideaOk = !!idea && suggestionOk(idea, { labels: p.labels, question: p.request.question, context: p.request.context, answers: [p.request.answer_from_parent_a, p.request.answer_from_parent_b] })
+          return { text, is_fallback: false, model_name: model, fallback_reason: null, suggestion: ideaOk ? idea : fallbackSuggestion(p.question_id, p.intent), suggestion_is_fallback: !ideaOk }
+        }
         failures.push(`check_failed:${problems[0]}`)
       } catch (e) {
         failures.push(classifyAiError(e))
@@ -113,7 +122,7 @@ async function composeStory(p: Prepared, interactionId: string): Promise<Compose
   }
   const reason = ai.available ? failures.join(',') : 'no_api_key'
   logMeta('story_fallback_used', { interaction_id: interactionId, reason })
-  return { text: FALLBACK_STORIES[p.intent], is_fallback: true, model_name: 'fallback-library', fallback_reason: reason }
+  return { text: FALLBACK_STORIES[p.intent], is_fallback: true, model_name: 'fallback-library', fallback_reason: reason, suggestion: fallbackSuggestion(p.question_id, p.intent), suggestion_is_fallback: true }
 }
 
 function logMeta(name: string, props: Record<string, string | boolean>) {
@@ -180,6 +189,8 @@ function newStory(i: Interaction, intent: StoryIntent, c: Composed, fromId: stri
     model_name: c.model_name,
     fallback_reason: c.fallback_reason,
     prompt_version: PROMPT_VERSION,
+    suggestion: c.suggestion,
+    suggestion_is_fallback: c.suggestion_is_fallback,
   }
 }
 
@@ -213,6 +224,8 @@ export interface StoryView {
   story_id: string
   interaction_id: string
   text: string
+  /** A small idea for the two of them, about this question only. */
+  suggestion: string | null
   category: Story['category']
   question_text: string
   created_at: string
@@ -227,6 +240,7 @@ function storyView(db: Db, s: Story, userId: string): StoryView {
     story_id: s.story_id,
     interaction_id: s.interaction_id,
     text: s.text,
+    suggestion: s.suggestion ?? null,
     category: s.category,
     question_text: s.question_text_snapshot,
     created_at: s.created_at,

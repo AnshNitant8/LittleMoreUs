@@ -22,6 +22,7 @@ import { phraseFlag } from '../safety'
 import { configureStorage, createMemoryAdapter, readDb } from '../storage'
 import { QUESTIONS } from '../../data/questions'
 import { FALLBACK_STORIES } from '../../data/fallbackStories'
+import { QUESTION_SUGGESTIONS } from '../../data/suggestions'
 import { storyLabels, validateStory } from '../../domain/rules/storyValidation'
 import { k, pairedCouple } from '../../test/helpers'
 
@@ -29,7 +30,7 @@ const flush = () => new Promise((r) => setTimeout(r, 30))
 const memoryQ = QUESTIONS.find((q) => q.story_intent === 'memory')!
 const futureQ = QUESTIONS.find((q) => q.story_intent === 'future_plan')!
 
-function fakeAi(opts: { stories?: (req: StoryRequest, call: number) => { story_text: string; intent_used: string } | Error; distress?: (t: string) => boolean | Error } = {}) {
+function fakeAi(opts: { stories?: (req: StoryRequest, call: number) => { story_text: string; intent_used: string; suggestion?: string } | Error; distress?: (t: string) => boolean | Error } = {}) {
   const calls: StoryRequest[] = []
   const classified: string[] = []
   const client: AiClient = {
@@ -62,6 +63,47 @@ async function bothAnswer(q = memoryQ, a = 'Dancing in the kitchen', b = 'The ra
 }
 
 beforeEach(() => configureStorage(createMemoryAdapter()))
+
+describe('a small idea for the two of them', () => {
+  const story = (req: StoryRequest) => `${req.parent_a_label}, ${req.parent_b_label}, I heard you both remember it. I like that you each kept a piece.`
+
+  it("shows Gemini's idea when it passes the checks, in the same call as the story", async () => {
+    const ai = fakeAi({ stories: (req) => ({ story_text: story(req), intent_used: req.story_intent, suggestion: 'Maybe dance in the kitchen again one evening this week.' }) })
+    await pairedCouple()
+    await bothAnswer()
+    expect(ai.calls).toHaveLength(1)
+    const s = readDb().stories[0]
+    expect(s.suggestion).toBe('Maybe dance in the kitchen again one evening this week.')
+    expect(s.suggestion_is_fallback).toBe(false)
+    expect((await getStory(s.story_id)).ok && (await getStory(s.story_id))).toMatchObject({ data: { suggestion: s.suggestion } })
+  })
+
+  it('uses the ready-written idea for that question when Gemini gives advice, a link or nothing', async () => {
+    for (const bad of ['You should see a therapist together.', 'Download the CoupleTime app at www.x.com', undefined]) {
+      configureStorage(createMemoryAdapter())
+      fakeAi({ stories: (req) => ({ story_text: story(req), intent_used: req.story_intent, ...(bad ? { suggestion: bad } : {}) }) })
+      await pairedCouple()
+      await bothAnswer()
+      const s = readDb().stories[0]
+      expect(s.is_fallback).toBe(false)
+      expect(s.suggestion).toBe(QUESTION_SUGGESTIONS[memoryQ.question_id])
+      expect(s.suggestion_is_fallback).toBe(true)
+    }
+  })
+
+  it('a backup-library story still comes with the idea for that question', async () => {
+    fakeAi({ stories: () => new Error('{"code":503}') })
+    await pairedCouple()
+    await bothAnswer()
+    const s = readDb().stories[0]
+    expect(s.is_fallback).toBe(true)
+    expect(s.suggestion).toBe(QUESTION_SUGGESTIONS[memoryQ.question_id])
+  })
+
+  it('every question has its own ready-written idea', () => {
+    for (const q of QUESTIONS) expect([q.question_id, !!QUESTION_SUGGESTIONS[q.question_id]]).toEqual([q.question_id, true])
+  })
+})
 
 describe('story generation (acceptance 5 & 6)', () => {
   it('uses a valid Gemini story with both labels, and sends only the minimum fields', async () => {
@@ -264,7 +306,7 @@ describe('story actions', () => {
     expect(reports.ok && reports.data).toHaveLength(1)
     expect(JSON.stringify(reports)).not.toMatch(/Dancing|rain on the window/)
     const rep = readDb().reports[0]
-    expect(rep).toMatchObject({ reason: 'uncomfortable', prompt_version: 'story-v1', model_name: 'fake-flash', story_intent: 'memory' })
+    expect(rep).toMatchObject({ reason: 'uncomfortable', prompt_version: 'story-v2', model_name: 'fake-flash', story_intent: 'memory' })
     await adminReviewReport({ report_id: rep.report_id, outcome: 'quarantined', idempotencyKey: k() })
     expect((await getStory(id)).ok).toBe(false)
     expect(readDb().audit_log.at(-1)).toMatchObject({ action: 'report_quarantined' })

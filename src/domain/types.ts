@@ -225,6 +225,10 @@ export interface Story {
   /** Prototype diagnostics: why the fallback library was used, e.g. "timeout,overloaded". */
   fallback_reason?: string | null
   prompt_version: string
+  /** "A small idea for you two", tied to this question only. */
+  suggestion?: string | null
+  /** True when the ready-written idea was used instead of Gemini's. */
+  suggestion_is_fallback?: boolean
 }
 
 export interface Reaction {

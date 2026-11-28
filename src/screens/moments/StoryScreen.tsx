@@ -66,6 +66,13 @@ function StoryBody({ story, onReported }: { story: StoryView; onReported: () => 
         )}
         <p className="text-sm text-ink-soft">Imaginative writing, not your child's actual words.</p>
 
+        {story.suggestion && !regen.busy && (
+          <section aria-labelledby="idea-title" className="rounded-[var(--radius-card)] border-2 border-line bg-white p-5">
+            <h2 id="idea-title" className="font-bold">A small idea for you two</h2>
+            <p className="mt-1 leading-relaxed">{story.suggestion}</p>
+          </section>
+        )}
+
         <fieldset>
           <legend className="mb-2 font-bold">React</legend>
           <div className="flex gap-2">
