@@ -93,9 +93,13 @@ describe('Storybook timeline and Recent (acceptance 10)', () => {
     expect(readDb().stories.some((s) => s.story_id === id)).toBe(true)
   })
 
-  it('lets either partner delete a story, removing it for both, even when locked', async () => {
+  it('refuses delete before the unlock; after it, either partner can delete for both', async () => {
     await pairedCouple()
     const id = await lockedSavedStory()
+    await switchUser('B')
+    const refused = await deleteStory({ story_id: id, idempotencyKey: k() })
+    expect(!refused.ok && refused.error).toMatchObject({ code: 403, locked: true })
+    await unlock()
     await switchUser('B')
     expect((await deleteStory({ story_id: id, idempotencyKey: k() })).ok).toBe(true)
     await switchUser('A')

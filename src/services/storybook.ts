@@ -1,5 +1,5 @@
 // Storybook (spec Screen 14, Sections 10 and 11): saved timeline, Recent,
-// locked previews, delete for both (free), and the JSON export (needs the unlock).
+// locked previews, delete for both (with the unlock), and the JSON export (needs the unlock).
 
 import { CATEGORIES } from '../domain/constants'
 import type { CategoryId, Result, Story } from '../domain/types'
@@ -89,6 +89,8 @@ export async function deleteStory(input: { story_id: string; idempotencyKey: str
   return mutate(input.idempotencyKey, (db) => {
     const me = requireUser(db)
     const s = requireVisibleStory(db, input.story_id, me.user_id)
+    // Product decision: deleting stories comes with the full Storybook unlock.
+    if (!unlockedBy(db, me.user_id)) fail(403, 'Deleting stories comes with the full Storybook. Unlock it to delete.', { locked: true })
     removeStory(db, s.story_id)
     track(db, 'story_deleted', { story_id: s.story_id, category: s.category, was_saved: s.saved })
     return true as const

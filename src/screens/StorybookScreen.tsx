@@ -36,7 +36,7 @@ export function StorybookScreen() {
               <EmptyState>Stories you save will gather here, newest first.</EmptyState>
             ) : (
               <ol className="space-y-3">
-                {state.data.saved.map((s) => <StoryRow key={s.story_id} story={s} />)}
+                {state.data.saved.map((s) => <StoryRow key={s.story_id} story={s} canDelete={state.data.unlocked} />)}
               </ol>
             )}
           </section>
@@ -48,7 +48,7 @@ export function StorybookScreen() {
               <EmptyState>No unsaved stories right now.</EmptyState>
             ) : (
               <ul className="space-y-3">
-                {state.data.recent.map((s) => <StoryRow key={s.story_id} story={s} />)}
+                {state.data.recent.map((s) => <StoryRow key={s.story_id} story={s} canDelete={state.data.unlocked} />)}
               </ul>
             )}
           </section>
@@ -60,7 +60,7 @@ export function StorybookScreen() {
             ) : (
               <>
                 <p className="text-sm text-ink-soft">
-                  Stories from the last {state.data.free_window_days} days are free to read. Older ones are kept safe and never deleted.
+                  Stories from the last {state.data.free_window_days} days are free to read. Older ones are kept safe and never deleted. Unlocking also lets you delete stories.
                 </p>
                 <button type="button" className="btn-secondary" onClick={() => navigate('unlock')}>Unlock full Storybook</button>
               </>
@@ -83,7 +83,7 @@ export function StorybookScreen() {
   )
 }
 
-function StoryRow({ story }: { story: StoryCard }) {
+function StoryRow({ story, canDelete }: { story: StoryCard; canDelete: boolean }) {
   const { navigate } = useRouter()
   const [confirming, setConfirming] = useState(false)
   const del = useAction('delete-story', (key) => deleteStory({ story_id: story.story_id, idempotencyKey: key }))
@@ -110,7 +110,7 @@ function StoryRow({ story }: { story: StoryCard }) {
         )}
         {story.removed_at && <span className="mt-1 block text-xs text-ink-soft">Leaves Recent on {formatDate(story.removed_at)} unless saved</span>}
       </button>
-      {confirming ? (
+      {!canDelete ? null : confirming ? (
         <div className="mt-3 space-y-2 rounded-2xl bg-white p-3" role="group" aria-label="Confirm delete">
           <p className="text-sm font-bold">Delete this story for both of you? It will be removed from both your Storybooks and can't be undone.</p>
           <div className="grid grid-cols-2 gap-2">
