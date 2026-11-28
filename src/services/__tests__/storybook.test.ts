@@ -15,7 +15,6 @@ import {
   saveStory,
   submitPaymentReference,
   switchUser,
-  updateFlags,
   getBook,
   setKeepsakeWords,
 } from '../api'
