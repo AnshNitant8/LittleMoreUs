@@ -1,4 +1,5 @@
-// Anonymous product analytics with PostHog. Off unless VITE_POSTHOG_KEY is set.
+// Anonymous product analytics: Vercel Web Analytics on the live site (page
+// views, visitors and named events), and PostHog only if VITE_POSTHOG_KEY is set.
 //
 // Privacy rules (answers are promised private):
 // - Only named events with a short allow-list of properties (category, mode,
@@ -8,11 +9,43 @@
 // - People are identified only by the app's internal user id.
 
 import type { PostHog } from 'posthog-js'
+import { inject, pageview, track as vercelTrack } from '@vercel/analytics'
 
 const KEY = import.meta.env.VITE_POSTHOG_KEY as string | undefined
 const HOST = (import.meta.env.VITE_POSTHOG_HOST as string | undefined) || 'https://eu.i.posthog.com'
 
 const SAFE_PROPS = new Set(['tried', 'category', 'mode', 'kind', 'count', 'unlocked', 'source', 'included'])
+
+/** Vercel Web Analytics: only on the deployed site, never on localhost or in tests. */
+const VERCEL =
+  import.meta.env.PROD && typeof window !== 'undefined' && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname)
+let vercelReady = false
+function vercel(): boolean {
+  if (!VERCEL) return false
+  if (!vercelReady) {
+    vercelReady = true
+    inject({
+      mode: 'production',
+      framework: 'vite',
+      // We send page views ourselves, by screen name only.
+      disableAutoTrack: true,
+      // Page addresses keep only the screen name: no story ids or invite tokens.
+      beforeSend: (e) => ({ ...e, url: vercelUrl(e.url) }),
+    })
+  }
+  return true
+}
+
+/** "https://x/#/story/sty_123" → "https://x/story". */
+function vercelUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    const screen = u.hash.replace(/^#\/?/, '').split(/[/?]/)[0] || u.pathname.replace(/^\//, '').split('/')[0]
+    return `${u.origin}/${screen}`
+  } catch {
+    return '/'
+  }
+}
 
 let client: Promise<PostHog | null> | null = null
 let identified: string | null = null
@@ -70,15 +103,20 @@ function clean(props: Record<string, unknown> = {}): Record<string, string | num
   return out
 }
 
-export const analyticsEnabled = () => !!KEY
+export const analyticsEnabled = () => !!KEY || VERCEL
 
 /** A named product event with allow-listed properties only. */
 export function trackEvent(name: string, props?: Record<string, unknown>) {
+  if (vercel()) vercelTrack(name, clean(props))
   void ph().then((p) => p?.capture(name, clean(props)))
 }
 
 /** One screen view, by screen name only. */
 export function trackScreen(screen: string) {
+  if (vercel()) {
+    const path = `/${screen.split(/[/?]/)[0]}`
+    pageview({ route: path, path })
+  }
   void ph().then((p) => p?.capture('$pageview', { $current_url: `${window.location.origin}/#/${screen}` }))
 }
 
@@ -114,7 +152,8 @@ const CALL_EVENTS: Record<string, (args: unknown[], data: unknown) => [string, R
   submitPaymentReference: () => ['payment_submitted'],
   requestExport: () => ['stories_exported'],
   deleteStory: () => ['story_deleted'],
-  updateMe: (a) => ((a[0] as { onboarding_complete?: boolean })?.onboarding_complete ? ['onboarding_completed'] : null),
+  // Sign-up is complete once onboarding is done.
+  updateMe: (a) => ((a[0] as { onboarding_complete?: boolean })?.onboarding_complete ? ['signed_up'] : null),
   disconnectCouple: () => ['couple_disconnected'],
   deleteAccount: () => ['account_deletion_requested'],
 }
@@ -122,7 +161,7 @@ const CALL_EVENTS: Record<string, (args: unknown[], data: unknown) => [string, R
 /** Wraps a service function so a successful call records its event. */
 export function withEvent<F extends (...args: never[]) => Promise<unknown>>(name: string, fn: F): F {
   const ev = CALL_EVENTS[name]
-  if (!ev || !KEY) return fn
+  if (!ev || !analyticsEnabled()) return fn
   return (async (...args: never[]) => {
     const r = (await fn(...args)) as { ok?: boolean; data?: unknown }
     if (r?.ok) {

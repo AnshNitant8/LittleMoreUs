@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ShareNudge } from '../ShareNudge'
+import { ReferFriend } from '../ReferFriend'
 
 describe('ShareNudge', () => {
   it('opens WhatsApp with a "your turn" note and the app link only', () => {
@@ -20,5 +21,16 @@ describe('ShareNudge', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Share another way' }))
     await screen.findByText(/Copied/)
     expect(writeText.mock.calls[0][0]).toContain('guessing game')
+  })
+})
+
+describe('ReferFriend', () => {
+  it('shares the app link on WhatsApp with a warm note and nothing the couple wrote', () => {
+    render(<ReferFriend from="profile" />)
+    const href = screen.getByRole('link', { name: 'Share on WhatsApp' }).getAttribute('href')!
+    const text = decodeURIComponent(href.split('text=')[1])
+    expect(href.startsWith('https://wa.me/?text=')).toBe(true)
+    expect(text).toContain('A Little More Us')
+    expect(text).toContain(`${window.location.origin}/`)
   })
 })

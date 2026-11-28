@@ -44,6 +44,8 @@ export default defineConfig(({ mode }) => {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: false,
+    // The live AI evaluation runs separately (npm run eval:ai).
+    exclude: ['**/node_modules/**', 'eval/**'],
   },
   }
 })

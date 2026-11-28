@@ -31,7 +31,7 @@ import { BookScreen } from '../screens/storybook/BookScreen'
 import { SERVER_MODE } from '../services/serverMode'
 import { startLiveRefresh } from '../services/remote/client'
 import { finishEmailLink } from '../services/remote/api'
-import { identifyUser, trackScreen } from '../services/productAnalytics'
+import { identifyUser, trackEvent, trackScreen } from '../services/productAnalytics'
 
 function Shell() {
   const { state } = useService(getPrototypeState)
@@ -135,6 +135,7 @@ export default function App() {
       .catch(() => null)
       .then((link) => {
         handoff = link === 'handoff'
+        if (link) trackEvent('signed_in', { source: 'email_link' })
         return runScheduledJobs()
       }).then((r) => {
       setBoot(r.ok ? (handoff ? 'handoff' : 'ready') : 'error')

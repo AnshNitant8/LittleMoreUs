@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ReferFriend } from '../components/ReferFriend'
 import { useRouter } from '../app/router'
 import { FieldError } from '../components/Onboarding'
 import { EmptyState, ErrorState, LoadingState, Screen } from '../components/ui'
@@ -94,6 +95,7 @@ export function StorybookScreen() {
             )}
             <FieldError id="export-error" message={exp.error?.message} />
           </section>
+          <ReferFriend from="storybook" />
         </>
       )}
     </Screen>

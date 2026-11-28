@@ -64,7 +64,8 @@ export function splitSentences(text: string): string[] {
     .filter(Boolean)
 }
 
-const words = (s: string) => s.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? []
+/** Lower-case words, also without a possessive 's ("Riya's" gives "riya's" and "riya"). */
+const words = (s: string) => (s.toLowerCase().replace(/’/g, "'").match(/[\p{L}\p{N}']+/gu) ?? []).flatMap((w) => (/'s$/.test(w) ? [w, w.slice(0, -2)] : [w]))
 
 export function validateStory(input: StoryValidationInput): StoryProblem[] {
   const problems: StoryProblem[] = []
@@ -107,7 +108,9 @@ export function validateStory(input: StoryValidationInput): StoryProblem[] {
     })
   }
 
-  if (PROHIBITED.some((re) => re.test(text))) problems.push('prohibited_content')
+  // A word the question itself uses (e.g. "lazy Sunday") is fine to repeat.
+  const asked = `${input.question} ${input.context}`.toLowerCase()
+  if (PROHIBITED.some((re) => { const m = re.exec(text); return !!m && !asked.includes(m[0].toLowerCase()) })) problems.push('prohibited_content')
   return problems
 }
 

@@ -343,3 +343,24 @@ describe('story actions', () => {
     expect(late.ok).toBe(false)
   })
 })
+
+describe('story checks found by the AI evaluation', () => {
+  const base = {
+    intent_used: 'memory',
+    story_intent: 'memory' as const,
+    labels: ['Mama', 'Amma'] as [string, string],
+    context: 'Remembering slower days together.',
+  }
+  it('allows a word the question uses, like "lazy Sunday"', () => {
+    const text = 'Mama, Amma, you remembered your lazy Sundays before I came. Mama loved long breakfasts, and Amma loved the lake.'
+    expect(validateStory({ ...base, text, question: 'What was your favourite way to spend a lazy Sunday before parenthood?', answers: ['Long breakfasts', 'Cycling to the lake'] })).toEqual([])
+  })
+  it('still refuses a judging word the question does not use', () => {
+    const text = 'Mama, Amma, you remembered your slow Sundays before I came. Mama was a little lazy, and Amma loved the lake.'
+    expect(validateStory({ ...base, text, question: 'What was your favourite way to spend a Sunday before parenthood?', answers: ['Long breakfasts', 'Cycling to the lake'] })).toContain('prohibited_content')
+  })
+  it("knows a name written with 's in an answer", () => {
+    const text = "Mama, you remembered laughing at Riya's wedding. Amma, you remembered the soup you were brought."
+    expect(validateStory({ ...base, text, question: 'When did you first realise this person was someone special?', answers: ["When you laughed at my joke at Riya's wedding.", 'The day you brought me soup.'] })).toEqual([])
+  })
+})

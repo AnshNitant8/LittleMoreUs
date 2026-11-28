@@ -11,11 +11,13 @@
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit",
     "dev:server": "node scripts/dev-server.mjs",
-    "dev:app": "VITE_SUPABASE_URL=local VITE_SUPABASE_ANON_KEY=local VITE_DEV_AUTH=1 vite"
+    "dev:app": "VITE_SUPABASE_URL=local VITE_SUPABASE_ANON_KEY=local VITE_DEV_AUTH=1 vite",
+    "eval:ai": "vitest run --config vitest.eval.config.ts"
   },
   "dependencies": {
     "@google/genai": "^3.6.1",
     "@supabase/supabase-js": "^2.119.2",
+    "@vercel/analytics": "2.0.1",
     "pg": "^8.23.1",
     "posthog-js": "^1.447.12",
     "react": "^19.3.1",

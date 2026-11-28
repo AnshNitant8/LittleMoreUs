@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ReferFriend } from '../../components/ReferFriend'
 import { trackEvent } from '../../services/productAnalytics'
 import { useRouter } from '../../app/router'
 import { FieldError } from '../../components/Onboarding'
@@ -107,6 +108,8 @@ function StoryBody({ story, onReported }: { story: StoryView; onReported: () => 
           <summary className="min-h-11 cursor-pointer py-2">The question you both answered</summary>
           <p>{story.question_text}</p>
         </details>
+
+        <ReferFriend from="story" />
 
         {sheet === 'open' ? (
           <section aria-labelledby="sdfr-title" className="card space-y-3">

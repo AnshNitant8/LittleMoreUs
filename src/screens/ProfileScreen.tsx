@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { ReferFriend } from '../components/ReferFriend'
 import { useRouter } from '../app/router'
 import { FieldError, SelectAll } from '../components/Onboarding'
 import { ErrorState, LoadingState, Screen } from '../components/ui'
@@ -97,6 +98,7 @@ export function ProfileScreen() {
 
       <ExportSection />
       <PrivacySection />
+      <ReferFriend from="profile" />
 
       {c && (
         <Row id="disconnect" open={open} onToggle={toggle} title="Disconnect from your partner" summary="Ends your pairing. Saved stories stay.">
