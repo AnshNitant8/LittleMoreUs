@@ -6,6 +6,7 @@ import { useAction } from '../../hooks/useAction'
 import { useService } from '../../hooks/useService'
 import { cancelOtp, getOtpStatus, requestOtp, verifyOtp } from '../../services/api'
 import { SERVER_MODE } from '../../services/serverMode'
+import { waitForEmailLink } from '../../services/remote/api'
 
 export function OtpScreen() {
   const { navigate } = useRouter()
@@ -53,6 +54,29 @@ export function OtpScreen() {
   const locked = !!status.locked_until
   const error = verify.error ?? resend.error
 
+  if (SERVER_MODE) {
+    return (
+      <OnboardingLayout
+        title="Check your email"
+        intro={<>We sent a sign-in link to <strong className="text-ink">{status.identifier}</strong>. Tap it, and this page will sign you in by itself.</>}
+        onBack={async () => {
+          await cancelOtp()
+          navigate('signin')
+        }}
+        footer={
+          <button type="button" className="btn-ghost w-full" disabled={status.resend_available_in_sec > 0 || resend.busy} onClick={onResend}>
+            {status.resend_available_in_sec > 0 ? `Send the link again in ${status.resend_available_in_sec}s` : 'Send the link again'}
+          </button>
+        }
+      >
+        <WaitForLink />
+        <p className="text-sm text-ink-soft">Can't see it? Check your spam folder. If you open the link on another phone or browser, you'll be signed in there instead.</p>
+        {resent && <p role="status" className="text-sm text-ink-soft">A new link is on its way. Use the newest email.</p>}
+        <FieldError id="otp-error" message={resend.error?.message} />
+      </OnboardingLayout>
+    )
+  }
+
   return (
     <form onSubmit={submit} noValidate>
       <OnboardingLayout
@@ -98,5 +122,16 @@ export function OtpScreen() {
         <FieldError id="otp-error" message={error?.message} />
       </OnboardingLayout>
     </form>
+  )
+}
+
+/** Signs this tab in as soon as the email link is opened in another tab. */
+function WaitForLink() {
+  useEffect(() => waitForEmailLink(), [])
+  return (
+    <p role="status" className="flex items-center gap-2 text-ink-soft">
+      <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-coral" aria-hidden="true" />
+      Waiting for you to tap the link…
+    </p>
   )
 }

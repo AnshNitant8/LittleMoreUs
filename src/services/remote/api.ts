@@ -91,15 +91,83 @@ async function signOutHere(): Promise<Result<true>> {
  * Arriving from the link in a sign-in email: Supabase reads the token from the
  * address, then we finish signing in and tidy the address for the app's router.
  */
-export async function finishEmailLink(): Promise<void> {
+// Tabs of the app in the same browser talk over this channel, so tapping the
+// email link signs in the tab that asked for it instead of leaving two apps open.
+const TAB_CHANNEL = 'almu-tabs'
+const channel = (): BroadcastChannel | null => (typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(TAB_CHANNEL))
+
+/**
+ * Arriving from the link in a sign-in email: Supabase reads the token from the
+ * address, then we finish signing in and tidy the address for the app's router.
+ * Returns 'handoff' when another tab of the app was waiting for this link and
+ * has now moved on, so this tab can step aside.
+ */
+export async function finishEmailLink(): Promise<'handoff' | 'here' | null> {
   const h = window.location.hash
-  if (!/access_token=|error_code=/.test(h)) return
+  if (!/access_token=|error_code=/.test(h)) return null
   const sb = await supabase()
   const { data } = await sb.auth.getSession()
   window.history.replaceState(null, '', `${window.location.pathname}#/`)
-  if (!data.session) return
+  if (!data.session) return null
   const res = await rpc('completeSignIn', [{ is_18_confirmed: device().code?.is_18_confirmed === true }])
-  if (res.ok) updateDevice({ code: null })
+  if (!res.ok) return 'here'
+  updateDevice({ code: null })
+  const ch = channel()
+  if (!ch) return 'here'
+  const waiting = await new Promise<boolean>((resolve) => {
+    const t = setTimeout(() => resolve(false), 600)
+    ch.onmessage = (e) => {
+      if (e.data === 'waiting') {
+        clearTimeout(t)
+        resolve(true)
+      }
+    }
+    ch.postMessage('signed-in')
+  })
+  ch.close()
+  return waiting ? 'handoff' : 'here'
+}
+
+/**
+ * While "check your email" is showing: move on as soon as the link is opened
+ * in another tab of this browser. Returns a stop function.
+ */
+export function waitForEmailLink(): () => void {
+  const ch = channel()
+  let done = false
+  const finish = () => {
+    if (done) return
+    done = true
+    emitChange()
+    // Cleared a moment later, so this screen doesn't flash "start again" while the app moves on.
+    setTimeout(() => updateDevice({ code: null }), 3000)
+  }
+  if (ch) {
+    ch.onmessage = (e) => {
+      if (e.data === 'signed-in') {
+        ch.postMessage('waiting')
+        finish()
+      }
+    }
+  }
+  // Backup for browsers without the channel: the sign-in is shared through storage.
+  let seenAt = 0
+  const poll = setInterval(async () => {
+    if (done) return
+    const { data } = await (await supabase()).auth.getSession()
+    if (!data.session) return
+    seenAt ||= Date.now()
+    // Give the link's tab a moment to finish creating the account first.
+    if (Date.now() - seenAt < 4000) return
+    const c = device().code
+    const r = await rpc('completeSignIn', [{ is_18_confirmed: c?.is_18_confirmed === true }])
+    if (r.ok) finish()
+  }, 2000)
+  return () => {
+    done = true
+    clearInterval(poll)
+    ch?.close()
+  }
 }
 
 /** The functions that work differently in server mode. */

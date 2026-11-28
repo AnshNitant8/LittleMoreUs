@@ -116,20 +116,34 @@ function SlotView() {
 }
 
 export default function App() {
-  const [boot, setBoot] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [boot, setBoot] = useState<'loading' | 'ready' | 'error' | 'handoff'>('loading')
   useEffect(() => {
     if (SERVER_MODE) startLiveRefresh()
     // Scheduled jobs run on every application load (after finishing a sign-in link).
-    void (SERVER_MODE ? finishEmailLink() : Promise.resolve())
-      .catch(() => undefined)
-      .then(() => runScheduledJobs()).then((r) => {
-      setBoot(r.ok ? 'ready' : 'error')
+    let handoff = false
+    void (SERVER_MODE ? finishEmailLink() : Promise.resolve(null))
+      .catch(() => null)
+      .then((link) => {
+        handoff = link === 'handoff'
+        return runScheduledJobs()
+      }).then((r) => {
+      setBoot(r.ok ? (handoff ? 'handoff' : 'ready') : 'error')
       // Finish any story whose generation was interrupted when the app closed.
       if (r.ok) void resumeGeneration()
     })
   }, [])
 
   if (boot === 'loading') return <div className="mx-auto max-w-[430px] px-4"><LoadingState label="Getting things ready" /></div>
+  if (boot === 'handoff')
+    return (
+      <div className="mx-auto max-w-[430px] px-4 pt-16 text-center">
+        <h1 className="screen-title">You're signed in</h1>
+        <p className="mt-3 text-ink-soft">Your other tab has already moved on. You can close this one and carry on there.</p>
+        <button type="button" className="btn-ghost mt-6 w-full" onClick={() => setBoot('ready')}>
+          Continue in this tab instead
+        </button>
+      </div>
+    )
   if (boot === 'error')
     return (
       <div className="mx-auto max-w-[430px] px-4 pt-10">
