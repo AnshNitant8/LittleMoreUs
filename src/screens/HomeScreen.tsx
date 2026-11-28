@@ -81,7 +81,6 @@ function SampleMoment() {
       <figure className="rounded-2xl bg-white p-4">
         <figcaption className="mb-2 text-sm font-bold text-ink-soft">A little story from your little one</figcaption>
         <blockquote className="text-lg leading-relaxed">{SAMPLE_MOMENT.story}</blockquote>
-        <p className="mt-2 text-xs text-ink-soft">Imaginative writing, not your child's actual words.</p>
       </figure>
       <p className="text-sm text-ink-soft">You'll be able to answer once your partner joins.</p>
     </section>

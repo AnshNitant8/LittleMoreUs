@@ -64,7 +64,6 @@ function StoryBody({ story, onReported }: { story: StoryView; onReported: () => 
             <blockquote className="text-lg leading-relaxed sm:text-xl sm:leading-loose">{story.text}</blockquote>
           </figure>
         )}
-        <p className="text-sm text-ink-soft">Imaginative writing, not your child's actual words.</p>
 
         {story.suggestion && !regen.busy && (
           <section aria-labelledby="idea-title" className="rounded-[var(--radius-card)] border-2 border-line bg-white p-5">
