@@ -89,6 +89,54 @@ describe('sign-in on the server', () => {
   })
 })
 
+describe("the app's own 6-digit code emails", () => {
+  const sent: { to: string; subject: string; text: string }[] = []
+  const sessions: string[] = []
+  const signin = {
+    secret: 's',
+    mailer: { send: async (m: { to: string; subject: string; text: string }) => void sent.push(m) },
+    openSession: async (email: string) => {
+      sessions.push(email)
+      return { access_token: `tok-${email}`, refresh_token: 'r' }
+    },
+  }
+  const rpc = (fn: string, arg: unknown) => handleRpc({ fn, args: [arg] }, null, { gateway, adminEmails: [], signin }).then((o) => o.result)
+
+  it('emails only a code (no link), lets the right code in once, and limits retries', async () => {
+    sent.length = 0
+    expect(await rpc('sendSignInCode', { email: 'New@X.com', is_18_confirmed: true })).toMatchObject({ ok: true })
+    expect(sent).toHaveLength(1)
+    expect(sent[0].to).toBe('new@x.com')
+    expect(sent[0].text).not.toMatch(/https?:/)
+    const code = /\b(\d{6})\b/.exec(sent[0].subject)![1]
+    // A second ask within a minute waits.
+    const again = await rpc('sendSignInCode', { email: 'new@x.com' })
+    expect(!again.ok && again.error.code).toBe(429)
+    const wrong = code === '000000' ? '111111' : '000000'
+    const w = await rpc('verifySignInCode', { email: 'new@x.com', code: wrong })
+    expect(!w.ok && w.error.message).toMatch(/4 tries left/)
+    expect(await rpc('verifySignInCode', { email: 'new@x.com', code })).toEqual({ ok: true, data: { access_token: 'tok-new@x.com', refresh_token: 'r' } })
+    // Used up.
+    const reuse = await rpc('verifySignInCode', { email: 'new@x.com', code })
+    expect(reuse.ok).toBe(false)
+  })
+
+  it('locks after five wrong codes', async () => {
+    sent.length = 0
+    await rpc('sendSignInCode', { email: 'l@x.com' })
+    const code = /\b(\d{6})\b/.exec(sent[0].subject)![1]
+    const wrong = code === '000000' ? '111111' : '000000'
+    for (let i = 0; i < 5; i++) await rpc('verifySignInCode', { email: 'l@x.com', code: wrong })
+    const r = await rpc('verifySignInCode', { email: 'l@x.com', code })
+    expect(!r.ok && r.error.code).toBe(429)
+  })
+
+  it('tells the browser to fall back when no email account is set up', async () => {
+    const r = (await handleRpc({ fn: 'sendSignInCode', args: [{ email: 'a@x.com' }] }, null, { gateway, adminEmails: [] })).result
+    expect(!r.ok && r.error.message).toBe('not_configured')
+  })
+})
+
 describe('two partners on two phones', () => {
   it('invite, accept, answer privately, and both see one Gemini story', async () => {
     const a = phone('priya@x.com')

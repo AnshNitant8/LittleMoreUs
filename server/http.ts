@@ -9,6 +9,7 @@ import type { Gateway } from './gateway'
 import { handleRpc, withDb, type Caller, type RpcRequest } from './rpc'
 import { buildDb, diffDb } from './scope'
 import { runSelftest } from './selftest'
+import type { SigninDeps } from './signin'
 
 export interface ServerConfig {
   gateway: Gateway
@@ -18,6 +19,7 @@ export interface ServerConfig {
   geminiKey?: string
   cronSecret?: string
   selftestToken?: string
+  signin?: SigninDeps
 }
 
 const MAX_BODY = 64 * 1024
@@ -68,7 +70,7 @@ export function createHandler(cfg: ServerConfig) {
       }
       const auth = req.headers.authorization
       const caller = auth?.startsWith('Bearer ') ? await cfg.verify(auth.slice(7)) : null
-      const out = await handleRpc(body, caller, { gateway: cfg.gateway, adminEmails: cfg.adminEmails })
+      const out = await handleRpc(body, caller, { gateway: cfg.gateway, adminEmails: cfg.adminEmails, signin: cfg.signin })
       send(res, 200, out)
     } catch (e) {
       // Never log request bodies: they can hold answers.
@@ -94,6 +96,7 @@ async function health(res: ServerResponse, cfg: ServerConfig, gemini = false) {
     // A short fingerprint, to tell which key is set without showing it.
     gemini_key_id: cfg.geminiKey ? createHash('sha256').update(cfg.geminiKey).digest('hex').slice(0, 8) : null,
     admin_set: cfg.adminEmails.length > 0,
+    email_codes: !!cfg.signin,
     build: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
     region: process.env.VERCEL_REGION ?? null,
     // ?gemini=1: one live call to each model, with its time and error.

@@ -48,6 +48,11 @@ function devAuth(): SupabaseClient {
         localStorage.setItem(KEY, email)
         return { data: {}, error: null }
       },
+      async setSession({ access_token }: { access_token: string }) {
+        if (!access_token.startsWith('dev:')) return { data: {}, error: { message: 'bad token' } }
+        localStorage.setItem(KEY, access_token.slice(4))
+        return { data: {}, error: null }
+      },
       async signOut() {
         localStorage.removeItem(KEY)
         return { error: null }
@@ -66,6 +71,8 @@ export interface PendingCode {
   mode: 'signup' | 'login'
   is_18_confirmed: boolean
   sent_at: number
+  /** Sent by the app itself (a 6-digit code, 10 minutes), not by Supabase. */
+  own?: boolean
 }
 
 interface DeviceState {

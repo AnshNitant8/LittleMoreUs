@@ -11,6 +11,7 @@ import { readDb, setStoreContextResolver, transact, type Db, type StoreContext }
 import { setAiClientResolver, type AiClient } from '../src/services/gemini'
 import { ConflictError, type Gateway } from './gateway'
 import { buildDb, diffDb } from './scope'
+import { sendSignInCode, verifySignInCode, type SigninDeps } from './signin'
 
 export interface Caller {
   auth_id: string
@@ -36,6 +37,8 @@ export interface RpcDeps {
   adminEmails: string[]
   /** Only for the dry run: an AI client for this call instead of the shared one. */
   ai?: AiClient
+  /** The app's own emailed codes. Absent: the browser falls back to Supabase's emails. */
+  signin?: SigninDeps
 }
 
 interface Ctx extends StoreContext {
@@ -84,6 +87,8 @@ const ACCESS = new Map<string, Access>([
   ['markNotificationsRead', 'user'],
   ['lookupAccount', 'public'],
   ['getServerInfo', 'public'],
+  ['sendSignInCode', 'public'],
+  ['verifySignInCode', 'public'],
   ['completeSignIn', 'signed-in'],
 ])
 
@@ -115,6 +120,13 @@ export async function handleRpc(req: RpcRequest, caller: Caller | null, deps: Rp
     if (!id) return fail(400, 'Please enter a valid email address.')
     if (id.kind !== 'email') return fail(400, "Please use your email address. Signing in with a phone number isn't available yet.")
     return { result: { ok: true, data: { exists: await deps.gateway.accountExists(id.value), identifier: id.value } }, client: { pending_invite: req.client?.pending_invite ?? null } }
+  }
+
+  if (fn === 'sendSignInCode' || fn === 'verifySignInCode') {
+    const keep = { pending_invite: req.client?.pending_invite ?? null }
+    if (!deps.signin) return { result: { ok: false, error: { code: 503, message: 'not_configured' } }, client: keep }
+    const run = fn === 'sendSignInCode' ? sendSignInCode : verifySignInCode
+    return { result: await run(args[0], deps.gateway, deps.signin), client: keep }
   }
 
   const pendingInvite = typeof req.client?.pending_invite === 'string' ? req.client.pending_invite : null

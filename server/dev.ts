@@ -23,6 +23,15 @@ const handler = createHandler({
   adminEmails: (process.env.ADMIN_EMAILS ?? 'admin@example.com').split(',').map((s) => s.trim().toLowerCase()),
   geminiKey: process.env.GEMINI_API_KEY,
   cronSecret: 'dev-cron',
+  // DEV_EMAIL_CODES=1: try the app's own code emails; the "email" is printed here.
+  signin:
+    process.env.DEV_EMAIL_CODES === '1'
+      ? {
+          secret: 'dev',
+          mailer: { send: async (m) => console.log(`[dev-mail] to ${m.to}: ${m.subject}`) },
+          openSession: async (email) => ({ access_token: `dev:${email}`, refresh_token: 'dev' }),
+        }
+      : undefined,
 })
 
 const port = Number(process.env.PORT ?? 8787)
