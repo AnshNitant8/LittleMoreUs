@@ -17,7 +17,7 @@ const viteEnv = {
 }
 
 export const STORY_SYSTEM_INSTRUCTION =
-  'You write one short story in the imagined voice of a baby or toddler speaking to their two parents. Output JSON only: {"story_text": string, "intent_used": string}. Rules: 2 to 4 sentences, at most about 600 characters, text only. Use each parent\'s label exactly as supplied and give both parents balanced attention. Use only information in the question and the two answers. Never invent facts, feelings, plans, agreement, compromise or happy endings. Never judge or compare the parents, never use the child to create guilt, never give medical, therapeutic or relationship advice, never claim to know the child\'s real feelings. Choose the narrative shape from story_intent and never infer the intent from the answers: memory = reflective past tense; present or appreciation = present tense; preference = framed as choices, not events; future_plan = forward-looking ("is leaning towards", "might"), never narrating a past memory; support = acknowledge needs without claiming anything is resolved; playful_hypothetical = light, never turning a guess into a fact. Set intent_used equal to story_intent. If both labels are identical, use the label with the first name each time. Also write suggestion: one short, warm sentence (at most about 180 characters), addressed to both parents, offering one small, doable thing they could do together that is directly about this question\'s topic and may build on what their answers mention. Phrase it as a gentle idea ("You could...", "Maybe..."), never as an instruction. It must stay within the question\'s topic: no general relationship, parenting, health or therapy advice, no products, apps, links or places to book, no judging, and nothing that isn\'t in the question or the answers.'
+  'You write one short story in the imagined voice of a baby or toddler speaking to their two parents. Output JSON only: {"story_text": string, "intent_used": string}. Rules: 2 to 4 sentences, at most about 600 characters, text only. Use each parent\'s label exactly as supplied and give both parents balanced attention. Use only information in the question and the two answers. Never invent facts, feelings, plans, agreement, compromise or happy endings. Never judge or compare the parents, never use the child to create guilt, never give medical, therapeutic or relationship advice, never claim to know the child\'s real feelings. Choose the narrative shape from story_intent and never infer the intent from the answers: memory = reflective past tense; present or appreciation = present tense; preference = framed as choices, not events; future_plan = forward-looking ("is leaning towards", "might"), never narrating a past memory; support = acknowledge needs without claiming anything is resolved; playful_hypothetical = light, never turning a guess into a fact. Set intent_used equal to story_intent. If both labels are identical, use the label with the first name each time. Also write suggestion: one short, warm sentence (at most about 180 characters), addressed to both parents, offering one small, doable thing they could do together that is directly about this question\'s topic and may build on what their answers mention. Phrase it as a gentle idea ("You could...", "Maybe..."), never as an instruction. It must stay within the question\'s topic: no general relationship, parenting, health or therapy advice, no products, apps, links or places to book, no judging, and nothing that isn\'t in the question or the answers. Also set suggestion_timeframe to when the idea is meant to happen, matching its own wording: "today" (today or tonight), "few_days" (tomorrow or the next few days), "weekend" (this weekend), "week" (this week) or "month" (this month or later).'
 
 /** Style-only examples (spec Section 8). Sent as context, never to be copied. */
 export const FEW_SHOT_EXAMPLES = {
@@ -52,6 +52,8 @@ export interface StoryModelOutput {
   intent_used: string
   /** One small thing the two parents could do together, about this question only. */
   suggestion?: string
+  /** When the idea is meant to happen: today, few_days, weekend, week or month. */
+  suggestion_timeframe?: string
 }
 
 /** The two AI jobs. Swappable so tests (or a future server) can provide them. */
@@ -146,8 +148,8 @@ export function createGeminiClient(apiKey: string | undefined): AiClient {
               responseMimeType: 'application/json',
               responseSchema: {
                 type: Type.OBJECT,
-                properties: { story_text: { type: Type.STRING }, intent_used: { type: Type.STRING }, suggestion: { type: Type.STRING } },
-                required: ['story_text', 'intent_used', 'suggestion'],
+                properties: { story_text: { type: Type.STRING }, intent_used: { type: Type.STRING }, suggestion: { type: Type.STRING }, suggestion_timeframe: { type: Type.STRING, enum: ['today', 'few_days', 'weekend', 'week', 'month'] } },
+                required: ['story_text', 'intent_used', 'suggestion', 'suggestion_timeframe'],
               },
               temperature: 0.7,
             },
@@ -156,7 +158,7 @@ export function createGeminiClient(apiKey: string | undefined): AiClient {
       )
       const parsed = JSON.parse(value.text ?? '') as Partial<StoryModelOutput>
       if (typeof parsed.story_text !== 'string' || typeof parsed.intent_used !== 'string') throw new Error('bad_shape')
-      return { output: { story_text: parsed.story_text, intent_used: parsed.intent_used, ...(typeof parsed.suggestion === 'string' ? { suggestion: parsed.suggestion } : {}) }, model }
+      return { output: { story_text: parsed.story_text, intent_used: parsed.intent_used, ...(typeof parsed.suggestion === 'string' ? { suggestion: parsed.suggestion } : {}), ...(typeof parsed.suggestion_timeframe === 'string' ? { suggestion_timeframe: parsed.suggestion_timeframe } : {}) }, model }
     },
     async classifyDistress(text) {
       const { value } = await firstModelThatAnswers(

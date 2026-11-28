@@ -74,6 +74,11 @@ function StoryBody({ story, onReported }: { story: StoryView; onReported: () => 
           <section aria-labelledby="idea-title" className="rounded-[var(--radius-card)] border-2 border-line bg-white p-5">
             <h2 id="idea-title" className="font-bold">A small idea for you two</h2>
             <p className="mt-1 leading-relaxed">{story.suggestion}</p>
+            {story.idea_tried && (
+              <p className="mt-3 inline-flex items-center gap-1 rounded-full bg-ink px-3 py-1 text-sm font-bold text-white">
+                <span aria-hidden="true">✓</span> We did this
+              </p>
+            )}
           </section>
         )}
 

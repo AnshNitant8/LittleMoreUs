@@ -5,8 +5,8 @@
 import { FALLBACK_STORIES } from '../data/fallbackStories'
 import { REGENERATE_WINDOW_HOURS } from '../domain/constants'
 import { storyLabels, suggestionOk, validateStory } from '../domain/rules/storyValidation'
-import { fallbackSuggestion } from '../data/suggestions'
-import type { Interaction, ReactionValue, Report, ReportReason, Result, Story, StoryIntent } from '../domain/types'
+import { IDEA_TIMEFRAMES, fallbackSuggestion, fallbackTimeframe, timeframeFromText } from '../data/suggestions'
+import type { IdeaTimeframe, Interaction, ReactionValue, Report, ReportReason, Result, Story, StoryIntent } from '../domain/types'
 import { ALL_QUESTIONS } from '../data/questions'
 import { newId } from '../utils/id'
 import { DURATION, nowIso, nowMs } from './clock'
@@ -29,6 +29,7 @@ interface Composed {
   fallback_reason: string | null
   suggestion: string
   suggestion_is_fallback: boolean
+  suggestion_timeframe: IdeaTimeframe
 }
 
 /** Short, text-free label for a failed Gemini call. */
@@ -112,7 +113,10 @@ async function composeStory(p: Prepared, interactionId: string): Promise<Compose
         if (problems.length === 0) {
           const idea = (output.suggestion ?? '').replace(/\s+/g, ' ').trim()
           const ideaOk = !!idea && suggestionOk(idea, { labels: p.labels, question: p.request.question, context: p.request.context, answers: [p.request.answer_from_parent_a, p.request.answer_from_parent_b] })
-          return { text, is_fallback: false, model_name: model, fallback_reason: null, suggestion: ideaOk ? idea : fallbackSuggestion(p.question_id, p.intent), suggestion_is_fallback: !ideaOk }
+          const tf = IDEA_TIMEFRAMES.find((t) => t === output.suggestion_timeframe) ?? timeframeFromText(idea)
+          return ideaOk
+            ? { text, is_fallback: false, model_name: model, fallback_reason: null, suggestion: idea, suggestion_is_fallback: false, suggestion_timeframe: tf }
+            : { text, is_fallback: false, model_name: model, fallback_reason: null, suggestion: fallbackSuggestion(p.question_id, p.intent), suggestion_is_fallback: true, suggestion_timeframe: fallbackTimeframe(p.question_id, p.intent) }
         }
         failures.push(`check_failed:${problems[0]}`)
       } catch (e) {
@@ -122,7 +126,7 @@ async function composeStory(p: Prepared, interactionId: string): Promise<Compose
   }
   const reason = ai.available ? failures.join(',') : 'no_api_key'
   logMeta('story_fallback_used', { interaction_id: interactionId, reason })
-  return { text: FALLBACK_STORIES[p.intent], is_fallback: true, model_name: 'fallback-library', fallback_reason: reason, suggestion: fallbackSuggestion(p.question_id, p.intent), suggestion_is_fallback: true }
+  return { text: FALLBACK_STORIES[p.intent], is_fallback: true, model_name: 'fallback-library', fallback_reason: reason, suggestion: fallbackSuggestion(p.question_id, p.intent), suggestion_is_fallback: true, suggestion_timeframe: fallbackTimeframe(p.question_id, p.intent) }
 }
 
 function logMeta(name: string, props: Record<string, string | boolean>) {
@@ -191,6 +195,7 @@ function newStory(i: Interaction, intent: StoryIntent, c: Composed, fromId: stri
     prompt_version: PROMPT_VERSION,
     suggestion: c.suggestion,
     suggestion_is_fallback: c.suggestion_is_fallback,
+    suggestion_timeframe: c.suggestion_timeframe,
   }
 }
 
@@ -236,6 +241,8 @@ export interface StoryView {
   my_words_added: boolean
   /** My answer is still kept, so I can add it to the book. */
   can_add_words: boolean
+  /** We said yes to "Did you two try it?". */
+  idea_tried: boolean
 }
 
 function storyView(db: Db, s: Story, userId: string): StoryView {
@@ -253,6 +260,7 @@ function storyView(db: Db, s: Story, userId: string): StoryView {
     can_regenerate: !s.regenerate_used && raw && nowMs() - Date.parse(s.created_at) < REGENERATE_WINDOW_HOURS * DURATION.HOUR,
     my_words_added: s.keepsake_words?.[userId] !== undefined,
     can_add_words: db.responses.some((r) => r.interaction_id === s.interaction_id && r.user_id === userId && r.status === 'submitted' && !!r.text_or_choice?.trim()),
+    idea_tried: s.idea_checkin?.status === 'tried',
   }
 }
 

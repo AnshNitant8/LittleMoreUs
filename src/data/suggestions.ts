@@ -1,7 +1,7 @@
 // "A small idea for you two": one gentle thing to do together, tied only to
 // the question that was answered. Gemini writes one alongside the story; these
 // ready-written ideas are used when it can't (or its idea fails the checks).
-import type { StoryIntent } from '../domain/types'
+import type { IdeaTimeframe, StoryIntent } from '../domain/types'
 
 export const QUESTION_SUGGESTIONS: Record<string, string> = {
   q_rem_1: 'Tell each other one more little moment from before the baby, maybe over a cup of tea tonight.',
@@ -27,6 +27,30 @@ export const QUESTION_SUGGESTIONS: Record<string, string> = {
   q_play_5: 'Put one small plan for next month on the calendar together this week.',
 }
 
+export const QUESTION_TIMEFRAMES: Record<string, IdeaTimeframe> = {
+  q_rem_1: 'today',
+  q_rem_2: 'weekend',
+  q_rem_3: 'few_days',
+  q_rem_4: 'week',
+  q_jny_1: 'few_days',
+  q_jny_2: 'few_days',
+  q_jny_3: 'few_days',
+  q_jny_4: 'week',
+  q_app_1: 'today',
+  q_app_2: 'few_days',
+  q_app_3: 'week',
+  q_app_4: 'week',
+  q_need_1: 'week',
+  q_need_2: 'week',
+  q_need_3: 'week',
+  q_need_4: 'few_days',
+  q_play_1: 'weekend',
+  q_play_2: 'week',
+  q_play_3: 'today',
+  q_play_4: 'month',
+  q_play_5: 'week',
+}
+
 export const INTENT_SUGGESTIONS: Record<StoryIntent, string> = {
   memory: 'Share one more little piece of that memory with each other this week.',
   present: 'Check in again with a few words tomorrow, the same way you did today.',
@@ -35,6 +59,31 @@ export const INTENT_SUGGESTIONS: Record<StoryIntent, string> = {
   future_plan: 'Pick one small step toward it and put it on the calendar together.',
   support: 'Choose one small thing you can each do for the other this week.',
   playful_hypothetical: 'Try a tiny version of your guesses together this weekend.',
+}
+
+export const INTENT_TIMEFRAMES: Record<StoryIntent, IdeaTimeframe> = {
+  memory: 'week',
+  present: 'few_days',
+  appreciation: 'few_days',
+  preference: 'week',
+  future_plan: 'week',
+  support: 'week',
+  playful_hypothetical: 'weekend',
+}
+
+export const IDEA_TIMEFRAMES: IdeaTimeframe[] = ['today', 'few_days', 'weekend', 'week', 'month']
+
+export function fallbackTimeframe(questionId: string, intent: StoryIntent): IdeaTimeframe {
+  return QUESTION_SUGGESTIONS[questionId] ? (QUESTION_TIMEFRAMES[questionId] ?? 'week') : INTENT_TIMEFRAMES[intent]
+}
+
+/** Best guess from the idea's own words, for ideas saved before timeframes existed. */
+export function timeframeFromText(text: string): IdeaTimeframe {
+  if (/\b(this|next) month\b|\bmonth\b/i.test(text)) return 'month'
+  if (/\bweekend\b|\bsaturday\b|\bsunday\b/i.test(text)) return 'weekend'
+  if (/\bweek\b/i.test(text)) return 'week'
+  if (/\btoday\b|\btonight\b|\bthis evening\b|end of the day/i.test(text)) return 'today'
+  return 'few_days'
 }
 
 export function fallbackSuggestion(questionId: string, intent: StoryIntent): string {

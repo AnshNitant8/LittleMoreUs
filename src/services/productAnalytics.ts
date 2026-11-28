@@ -12,7 +12,7 @@ import type { PostHog } from 'posthog-js'
 const KEY = import.meta.env.VITE_POSTHOG_KEY as string | undefined
 const HOST = (import.meta.env.VITE_POSTHOG_HOST as string | undefined) || 'https://eu.i.posthog.com'
 
-const SAFE_PROPS = new Set(['category', 'mode', 'kind', 'count', 'unlocked', 'source', 'included'])
+const SAFE_PROPS = new Set(['tried', 'category', 'mode', 'kind', 'count', 'unlocked', 'source', 'included'])
 
 let client: Promise<PostHog | null> | null = null
 let identified: string | null = null
@@ -109,6 +109,7 @@ const CALL_EVENTS: Record<string, (args: unknown[], data: unknown) => [string, R
   reactToStory: () => ['story_reacted'],
   regenerateStory: () => ['story_regenerated'],
   reportStory: () => ['story_reported'],
+  answerIdeaCheckin: (a) => ['idea_checkin_answered', { tried: !!(a[0] as { tried?: boolean } | undefined)?.tried }],
   setKeepsakeWords: (_a, d) => ['keepsake_words', { included: (d as { included?: boolean })?.included }],
   submitPaymentReference: () => ['payment_submitted'],
   requestExport: () => ['stories_exported'],

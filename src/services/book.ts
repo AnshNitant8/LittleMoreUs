@@ -23,6 +23,8 @@ export interface BookEntry {
   question: string
   text: string
   suggestion: string | null
+  /** "We did this": the couple tried the small idea. */
+  idea_tried?: boolean
   words: BookWords[]
   reactions: string[]
 }
@@ -79,6 +81,7 @@ export function buildBook(db: Db, userId: string): BookView {
       question: s.question_text_snapshot,
       text: s.text,
       suggestion: s.suggestion ?? null,
+      idea_tried: s.idea_checkin?.status === 'tried',
       words: w,
       reactions: db.reactions.filter((r) => r.story_id === s.story_id).map((r) => r.value),
     })

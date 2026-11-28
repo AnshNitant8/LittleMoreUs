@@ -74,7 +74,7 @@ const USER = [
   'getNextMoment', 'getExplore', 'skipMoment', 'createInteraction', 'listInteractions', 'getHome', 'getInteraction',
   'respondToInteraction', 'declineInteraction', 'withdrawInteraction', 'getNextGame', 'createGame', 'respondToGame', 'getSupportRegion',
   'getStory', 'saveStory', 'reactToStory', 'reportStory', 'regenerateStory', 'resumeGeneration',
-  'getEntitlement', 'submitPaymentReference', 'listStories', 'deleteStory', 'requestExport', 'getBook', 'setKeepsakeWords',
+  'getEntitlement', 'submitPaymentReference', 'listStories', 'deleteStory', 'requestExport', 'getBook', 'setKeepsakeWords', 'answerIdeaCheckin', 'getIdeaCheckin',
   'disconnectCouple', 'deleteAccount', 'cancelAccountDeletion',
 ] as const
 const ADMIN = ['adminListPayments', 'adminVerifyPayment', 'adminListReports', 'adminReviewReport', 'listAnalytics', 'updateFlags', 'getAiStatus', 'testGemini'] as const

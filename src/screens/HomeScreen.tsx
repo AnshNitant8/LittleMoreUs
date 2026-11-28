@@ -4,7 +4,9 @@ import { EmptyState, ErrorState, LoadingState, Screen } from '../components/ui'
 import { SAMPLE_MOMENT } from '../data/sample'
 import { CATEGORIES } from '../domain/constants'
 import { useService } from '../hooks/useService'
-import { getHome, getMyInvitation, type CoupleView, type InteractionView } from '../services/api'
+import { useState } from 'react'
+import { useAction } from '../hooks/useAction'
+import { answerIdeaCheckin, getHome, getMyInvitation, type CoupleView, type IdeaCheckinView, type IdeaReminderView, type InteractionView } from '../services/api'
 
 export function HomeScreen({ name, couple }: { name: string; couple: CoupleView | null }) {
   const { navigate } = useRouter()
@@ -90,9 +92,12 @@ function SampleMoment() {
 function PairedHome() {
   const { navigate } = useRouter()
   const { state, reload } = useService(getHome)
+  // Keep the thank-you showing after answering, even though Home reloads without the check-in.
+  const [answered, setAnswered] = useState<{ c: IdeaCheckinView; status: CheckinStatus } | null>(null)
+  const [reminderDone, setReminderDone] = useState<IdeaReminderView | null>(null)
   if (state.status === 'loading') return <LoadingState />
   if (state.status === 'error') return <ErrorState message={state.error.message} onRetry={reload} />
-  const { featured, waiting_for_you, my_open, recent_stories, recent_closed, recent_games } = state.data
+  const { featured, waiting_for_you, my_open, recent_stories, recent_closed, recent_games, idea_checkin, idea_reminder } = state.data
   return (
     <>
       {waiting_for_you.length > 0 && (
@@ -131,6 +136,17 @@ function PairedHome() {
       </section>
 
       {waiting_for_you.length === 0 && <p className="text-center text-ink-soft">Nothing waiting right now. Enjoy your day.</p>}
+
+      {answered ? (
+        <IdeaCheckin key={answered.c.story_id} c={answered.c} answer={answered.status} />
+      ) : (
+        idea_checkin && <IdeaCheckin key={idea_checkin.story_id} c={idea_checkin} onAnswered={(status) => setAnswered({ c: idea_checkin, status })} />
+      )}
+      {reminderDone ? (
+        <IdeaReminder key={reminderDone.story_id} r={reminderDone} done />
+      ) : (
+        !answered && !idea_checkin && idea_reminder && <IdeaReminder key={idea_reminder.story_id} r={idea_reminder} onDone={() => setReminderDone(idea_reminder)} />
+      )}
 
       {my_open.length > 0 && (
         <section aria-labelledby="open-title" className="space-y-3">
@@ -205,5 +221,101 @@ function MomentRow({ i, onOpen, note }: { i: InteractionView; onOpen: () => void
       </span>
       <span aria-hidden="true" className="self-center text-xl">›</span>
     </button>
+  )
+}
+
+/** "Did you two try it?": asked once the small idea's own timeframe has passed. */
+type CheckinStatus = 'tried' | 'not_yet' | 'closed'
+
+function IdeaCheckin({ c, answer = null, onAnswered }: { c: IdeaCheckinView; answer?: CheckinStatus | null; onAnswered?: (s: CheckinStatus) => void }) {
+  const act = useAction('idea-checkin', (key, tried: boolean) => answerIdeaCheckin({ story_id: c.story_id, tried, idempotencyKey: key }))
+  const send = async (tried: boolean) => {
+    const r = await act.run(tried)
+    if (r?.ok) onAnswered?.(r.data.status)
+  }
+  const cat = CATEGORIES[c.category]
+  return (
+    <section aria-labelledby="idea-checkin-title" className="space-y-3 rounded-[var(--radius-card)] border-2 border-dashed border-line bg-white p-5">
+      <div className="flex items-center gap-3">
+        <span aria-hidden="true" className="text-2xl">✨</span>
+        <div>
+          <h2 id="idea-checkin-title" className="text-lg font-extrabold">Did you two try it?</h2>
+          <p className="text-sm text-ink-soft">{cat.name}</p>
+        </div>
+      </div>
+      <p className="rounded-2xl p-4 leading-relaxed text-ink" style={{ background: cat.accent }}>{c.suggestion}</p>
+      {answer === null ? (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" className="btn-primary" disabled={act.busy} onClick={() => send(true)}>Yes, we did</button>
+            <button type="button" className="btn-secondary" disabled={act.busy} onClick={() => send(false)}>Not yet</button>
+          </div>
+          {act.error && <p role="alert" className="text-sm text-ink-soft">{act.error.message}</p>}
+        </>
+      ) : (
+        <p role="status" className="text-ink">
+          {answer === 'tried'
+            ? 'Lovely. That page of your Storybook now says "We did this".'
+            : answer === 'not_yet'
+              ? "No rush. We'll ask once more a little later."
+              : "That's okay. Some ideas wait for the right day. We won't ask about this one again."}
+        </p>
+      )}
+    </section>
+  )
+}
+
+const HIDDEN_KEY = 'almu.idea_reminder_hidden'
+const todayHere = () => new Date().toLocaleDateString('en-CA')
+
+function hiddenToday(storyId: string): boolean {
+  try {
+    return localStorage.getItem(HIDDEN_KEY) === `${storyId}|${todayHere()}`
+  } catch {
+    return false
+  }
+}
+
+/** A warm, no-pressure reminder of a weekly or monthly idea. Hide it for the day, or say you did it. */
+function IdeaReminder({ r, done = false, onDone }: { r: IdeaReminderView; done?: boolean; onDone?: () => void }) {
+  const [hidden, setHidden] = useState(() => !done && hiddenToday(r.story_id))
+  const act = useAction('idea-done', (key) => answerIdeaCheckin({ story_id: r.story_id, tried: true, idempotencyKey: key }))
+  if (hidden) return null
+  const hide = () => {
+    try {
+      localStorage.setItem(HIDDEN_KEY, `${r.story_id}|${todayHere()}`)
+    } catch {
+      /* fine: hidden for this visit only */
+    }
+    setHidden(true)
+  }
+  const period = r.timeframe === 'month' ? 'month' : 'week'
+  const cat = CATEGORIES[r.category]
+  return (
+    <section aria-labelledby="idea-reminder-title" className="space-y-3 rounded-[var(--radius-card)] p-5" style={{ background: cat.accent }}>
+      <div className="flex items-start justify-between gap-3">
+        <h2 id="idea-reminder-title" className="font-extrabold">
+          <span aria-hidden="true">💛 </span>A little something for you two this {period}
+        </h2>
+        <button type="button" className="-mr-2 -mt-1 rounded-full px-2 text-xl leading-none text-ink-soft" aria-label="Hide for today" onClick={hide}>×</button>
+      </div>
+      <p className="leading-relaxed text-ink">{r.suggestion}</p>
+      {done ? (
+        <p role="status" className="text-ink">Lovely. That page of your Storybook now says "We did this".</p>
+      ) : (
+        <>
+          <p className="text-sm text-ink-soft">
+            {r.days_left <= 3
+              ? `A few days of this ${period} are still yours for it, whenever a quiet moment finds you both.`
+              : 'No rush. Whenever a quiet moment finds you both, it will be there.'}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" className="btn-secondary bg-white" disabled={act.busy} onClick={async () => { const x = await act.run(); if (x?.ok) onDone?.() }}>We did it</button>
+            <button type="button" className="btn-ghost" onClick={hide}>Hide for today</button>
+          </div>
+          {act.error && <p role="alert" className="text-sm text-ink-soft">{act.error.message}</p>}
+        </>
+      )}
+    </section>
   )
 }

@@ -229,11 +229,24 @@ export interface Story {
   suggestion?: string | null
   /** True when the ready-written idea was used instead of Gemini's. */
   suggestion_is_fallback?: boolean
+  /** When the small idea is meant to happen. Decides when "Did you two try it?" is asked. */
+  suggestion_timeframe?: IdeaTimeframe
+  /** The couple's answer to "Did you two try it?" (shared by both partners). */
+  idea_checkin?: IdeaCheckin
   /**
    * Each partner's own answer, kept for the Storybook book only when that
    * partner chose "Add my words to our Storybook". Keyed by user id.
    */
   keepsake_words?: Record<string, string>
+}
+
+export type IdeaTimeframe = 'today' | 'few_days' | 'weekend' | 'week' | 'month'
+
+export interface IdeaCheckin {
+  /** tried: "We did this". not_yet: asked once more later. closed: not asked again. */
+  status: 'tried' | 'not_yet' | 'closed'
+  at: ISODate
+  by: UserId
 }
 
 export interface Reaction {

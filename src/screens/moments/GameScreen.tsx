@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ShareNudge } from '../../components/ShareNudge'
 import { useRouter } from '../../app/router'
 import { FieldError } from '../../components/Onboarding'
 import { QuestionCard } from '../../components/QuestionCard'
@@ -175,6 +176,7 @@ export function GameStatus({ interaction: i }: { interaction: InteractionView })
             </div>
           </section>
         )}
+        {i.status === 'awaiting_partner' && i.my_response && <ShareNudge partnerLabel={i.partner_label} game />}
         {i.role === 'partner' && i.status === 'awaiting_partner' && !i.my_response && (
           <button type="button" className="btn-primary" onClick={() => navigate('answer', i.interaction_id)}>Make your guess</button>
         )}

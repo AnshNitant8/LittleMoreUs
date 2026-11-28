@@ -6,6 +6,8 @@ import { QUESTIONS } from './questions'
 
 const MAMA = 'Mama (Priya)'
 const PAPA = 'Papa (Arjun)'
+/** The ideas this made-up couple said "Yes, we did" to. */
+const TRIED = new Set(['q_jny_1', 'q_rem_2', 'q_app_1', 'q_need_2', 'q_play_2', 'q_app_2'])
 
 function entry(id: string, date: string, text: string, suggestion: string, mama: string, papa: string, reactions: string[]): BookEntry {
   const q = QUESTIONS.find((x) => x.question_id === id)!
@@ -17,6 +19,7 @@ function entry(id: string, date: string, text: string, suggestion: string, mama:
     question: q.text,
     text,
     suggestion,
+    idea_tried: TRIED.has(id),
     words: [
       { label: MAMA, text: mama },
       { label: PAPA, text: papa },

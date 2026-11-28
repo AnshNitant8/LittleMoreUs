@@ -2,6 +2,7 @@
 // Privacy: views never include the partner's raw answer; notifications and
 // analytics never include question or answer text.
 
+import { dueIdeaCheckin, ideaReminder, type IdeaCheckinView, type IdeaReminderView } from './ideas'
 import { ANSWER_MAX, CATEGORIES, DISTRESS_FLAG_RETENTION_DAYS, SKIP_LIMIT_PER_CATEGORY_PER_DAY } from '../domain/constants'
 import { coupleOrder, selectQuestion, eligibleQuestions, type SelectionContext } from '../domain/rules/selection'
 import type {
@@ -497,6 +498,10 @@ export interface HomeView {
   recent_closed: InteractionView[]
   /** Guess My Answer games both of us finished in the last day, ready to reveal. */
   recent_games: InteractionView[]
+  /** "Did you two try it?" for one small idea whose time has passed, or null. */
+  idea_checkin: IdeaCheckinView | null
+  /** A gentle reminder of a weekly or monthly idea that's still ahead of them, or null. */
+  idea_reminder: IdeaReminderView | null
 }
 
 export async function getHome(): Promise<Result<HomeView>> {
@@ -535,6 +540,8 @@ export async function getHome(): Promise<Result<HomeView>> {
       waiting_for_you: waiting.map((i) => interactionView(db, i, me.user_id)),
       my_open: myOpen.map((i) => interactionView(db, i, me.user_id)),
       recent_stories: recent,
+      idea_checkin: dueIdeaCheckin(db, me.user_id),
+      idea_reminder: ideaReminder(db, me.user_id),
     }
   })
 }

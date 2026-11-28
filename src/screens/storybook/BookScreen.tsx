@@ -147,9 +147,14 @@ function Page({ entry }: { entry: BookEntry }) {
         {entry.suggestion && (
           <div className="flex gap-3 rounded-2xl border-2 border-dashed border-line p-4">
             <span aria-hidden="true" className="text-xl">✨</span>
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-extrabold text-ink">A small idea for you two</p>
               <p className="mt-1 text-ink">{entry.suggestion}</p>
+              {entry.idea_tried && (
+                <p className="mt-3 inline-flex items-center gap-1 rounded-full bg-ink px-3 py-1 text-sm font-bold text-white">
+                  <span aria-hidden="true">✓</span> We did this
+                </p>
+              )}
             </div>
           </div>
         )}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useRouter } from '../../app/router'
 import { FieldError } from '../../components/Onboarding'
 import { QuestionCard } from '../../components/QuestionCard'
+import { ShareNudge } from '../../components/ShareNudge'
 import { SupportCard } from '../../components/SupportCard'
 import { ErrorState, LoadingState } from '../../components/ui'
 import type { InteractionStatus } from '../../domain/types'
@@ -46,6 +47,7 @@ export function WaitingScreen({ interactionId }: { interactionId: string }) {
           {statusLabel(i)}
           {i.status === 'awaiting_partner' && <span className="block text-ink-soft">Open until {formatDateTime(i.expires_at)}</span>}
         </p>}
+        {!i.show_support && i.status === 'awaiting_partner' && i.my_response && <ShareNudge partnerLabel={i.partner_label} />}
         {(i.status === 'awaiting_partner' || i.status === 'generating') && (
           <p className="rounded-2xl bg-cream-deep p-4 text-sm">
             Your answer stays private. Your partner will never see it, only the shared story made after you both agree.
