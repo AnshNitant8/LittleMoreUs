@@ -56,13 +56,17 @@ export function StorybookScreen() {
           <section aria-labelledby="more-title" className="space-y-3">
             <h2 id="more-title" className="sr-only">Storybook options</h2>
             {state.data.unlocked ? (
-              <p className="card text-center font-bold">Your full Storybook is unlocked</p>
+              <>
+                <p className="card text-center font-bold">Your full Storybook is unlocked</p>
+                <button type="button" className="btn-primary" onClick={() => navigate('book')}>Open our Storybook book</button>
+              </>
             ) : (
               <>
                 <p className="text-sm text-ink-soft">
                   Stories from the last {state.data.free_window_days} days are free to read. Older ones are kept safe and never deleted. Unlocking also lets you delete stories.
                 </p>
                 <button type="button" className="btn-secondary" onClick={() => navigate('unlock')}>Unlock full Storybook</button>
+                <button type="button" className="btn-ghost w-full" onClick={() => navigate('book', 'sample')}>See a sample Storybook book</button>
               </>
             )}
             {state.data.unlocked ? (

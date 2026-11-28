@@ -16,6 +16,8 @@ import {
   submitPaymentReference,
   switchUser,
   updateFlags,
+  getBook,
+  setKeepsakeWords,
 } from '../api'
 import { configureStorage, createMemoryAdapter, readDb, transact } from '../storage'
 import { QUESTIONS } from '../../data/questions'
@@ -212,5 +214,43 @@ describe('export (acceptance 14)', () => {
     expect(!again.ok && again.error.code).toBe(429)
     await advanceClock(24)
     expect((await requestExport({ idempotencyKey: k() })).ok).toBe(true)
+  })
+})
+
+describe('the Storybook book and your own words', () => {
+  it('is locked until the unlock, then shows chapters with only the words each partner chose to add', async () => {
+    await pairedCouple()
+    const id = await makeStory()
+    await saveStory({ story_id: id, idempotencyKey: k() })
+    const locked = await getBook()
+    expect(!locked.ok && locked.error).toMatchObject({ code: 403, locked: true })
+    // B adds their words; A does not.
+    expect(await setKeepsakeWords({ story_id: id, include: true, idempotencyKey: k() })).toMatchObject({ ok: true, data: { included: true } })
+    await unlock()
+    await switchUser('A')
+    const g = await getStory(id)
+    expect(g.ok && g.data).toMatchObject({ my_words_added: false, can_add_words: true })
+    const book = await getBook()
+    if (!book.ok) throw new Error(book.error.message)
+    expect(book.data.chapters).toHaveLength(1)
+    const page = book.data.chapters[0].entries[0]
+    expect(page.words.map((w) => w.text)).toEqual(['The rain on the window'])
+    expect(JSON.stringify(book.data)).not.toContain('Dancing in the kitchen')
+    expect(page.suggestion).toBeTruthy()
+  })
+
+  it("can't add words once the answer is cleared after 24 hours, and taking them out removes them", async () => {
+    await pairedCouple()
+    const id = await makeStory()
+    await setKeepsakeWords({ story_id: id, include: true, idempotencyKey: k() })
+    await advanceClock(24)
+    await advanceClock(1)
+    await switchUser('A')
+    const late = await setKeepsakeWords({ story_id: id, include: true, idempotencyKey: k() })
+    expect(!late.ok && late.error.code).toBe(410)
+    await switchUser('B')
+    expect(readDb().stories[0].keepsake_words).toHaveProperty(readDb().slots.B.user_id!)
+    await setKeepsakeWords({ story_id: id, include: false, idempotencyKey: k() })
+    expect(Object.keys(readDb().stories[0].keepsake_words ?? {})).toHaveLength(0)
   })
 })

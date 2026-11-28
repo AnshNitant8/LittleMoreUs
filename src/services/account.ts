@@ -104,6 +104,8 @@ function eraseUser(db: Db, userId: string) {
     db.stories = db.stories.filter((s) => !gone.has(s.story_id))
     db.reactions = db.reactions.filter((r) => !gone.has(r.story_id))
   }
+  // Words a person added to the book leave with them.
+  for (const s of db.stories) if (s.keepsake_words?.[userId] !== undefined) delete s.keepsake_words[userId]
   db.users = db.users.filter((u) => u.user_id !== userId)
   db.responses = db.responses.filter((r) => r.user_id !== userId)
   db.reactions = db.reactions.filter((r) => r.user_id !== userId)

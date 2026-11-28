@@ -229,6 +229,11 @@ export interface Story {
   suggestion?: string | null
   /** True when the ready-written idea was used instead of Gemini's. */
   suggestion_is_fallback?: boolean
+  /**
+   * Each partner's own answer, kept for the Storybook book only when that
+   * partner chose "Add my words to our Storybook". Keyed by user id.
+   */
+  keepsake_words?: Record<string, string>
 }
 
 export interface Reaction {

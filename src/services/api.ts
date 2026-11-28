@@ -16,6 +16,8 @@ function pick<K extends keyof Api>(name: K): Api[K] {
 }
 
 export const acceptInvitation = pick('acceptInvitation')
+export const getBook = pick('getBook')
+export const setKeepsakeWords = pick('setKeepsakeWords')
 export const adminListPayments = pick('adminListPayments')
 export const adminListReports = pick('adminListReports')
 export const adminReviewReport = pick('adminReviewReport')

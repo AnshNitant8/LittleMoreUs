@@ -198,7 +198,7 @@ export const overrides: Partial<{ [K in keyof Api]: Api[K] }> = {
   getDraft: async (key: string) => ({ ok: true, data: device().drafts[key] ?? '' }),
   saveDraft: async (key: string, text: string) => {
     const drafts = { ...device().drafts }
-    if (text.trim()) drafts[key] = text.slice(0, 4000)
+    if (text.trim()) drafts[key] = text.slice(0, 10_000)
     else delete drafts[key]
     updateDevice({ drafts })
     return { ok: true, data: true as const }

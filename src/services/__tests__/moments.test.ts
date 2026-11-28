@@ -107,9 +107,9 @@ describe('creating a moment (acceptance 3 & 4)', () => {
     expect(!noConsent.ok && noConsent.error.code).toBe(422)
     const empty = await createInteraction({ question_id: qid, answer: '   ', consent: true, idempotencyKey: k() })
     expect(!empty.ok && empty.error.code).toBe(400)
-    const long = await createInteraction({ question_id: qid, answer: 'x'.repeat(501), consent: true, idempotencyKey: k() })
+    const long = await createInteraction({ question_id: qid, answer: 'x'.repeat(5001), consent: true, idempotencyKey: k() })
     expect(!long.ok && long.error.code).toBe(400)
-    expect((await createInteraction({ question_id: qid, answer: 'x'.repeat(500), consent: true, idempotencyKey: k() })).ok).toBe(true)
+    expect((await createInteraction({ question_id: qid, answer: 'x'.repeat(5000), consent: true, idempotencyKey: k() })).ok).toBe(true)
     expect(readDb().interactions).toHaveLength(1)
   })
 

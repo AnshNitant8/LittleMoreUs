@@ -6,7 +6,7 @@ import { CATEGORIES } from '../../domain/constants'
 import type { ReactionValue, ReportReason } from '../../domain/types'
 import { useAction } from '../../hooks/useAction'
 import { useService } from '../../hooks/useService'
-import { REACTIONS, getStory, reactToStory, regenerateStory, reportStory, saveStory, type StoryView } from '../../services/api'
+import { REACTIONS, getStory, reactToStory, regenerateStory, reportStory, saveStory, setKeepsakeWords, type StoryView } from '../../services/api'
 import { formatDate } from '../../utils/time'
 import { UnlockScreen } from '../storybook/UnlockScreen'
 
@@ -72,6 +72,8 @@ function StoryBody({ story, onReported }: { story: StoryView; onReported: () => 
             <p className="mt-1 leading-relaxed">{story.suggestion}</p>
           </section>
         )}
+
+        <KeepWords story={story} />
 
         <fieldset>
           <legend className="mb-2 font-bold">React</legend>
@@ -164,5 +166,30 @@ function StoryBody({ story, onReported }: { story: StoryView; onReported: () => 
         </div>
       </div>
     </main>
+  )
+}
+
+/** Opt in to keep my own answer on this story's page in our Storybook book. */
+function KeepWords({ story }: { story: StoryView }) {
+  const [added, setAdded] = useState(story.my_words_added)
+  const keep = useAction('keepsake-words', (key, include: boolean) => setKeepsakeWords({ story_id: story.story_id, include, idempotencyKey: key }))
+  if (!added && !story.can_add_words) return null
+  const toggle = async () => {
+    const r = await keep.run(!added)
+    if (r?.ok) setAdded(r.data.included)
+  }
+  return (
+    <section aria-labelledby="words-title" className="rounded-[var(--radius-card)] bg-cream-deep p-5">
+      <h2 id="words-title" className="font-bold">{added ? 'Your words are in your Storybook' : 'Keep your words in your Storybook?'}</h2>
+      <p className="mt-1 text-sm text-ink-soft">
+        {added
+          ? "Your answer is on this story's page in your Storybook book. Your partner can read it there."
+          : "Add your answer to this story's page in your Storybook book. Your partner will be able to read it there. If you don't add it, it's deleted 24 hours after the story, as always."}
+      </p>
+      <button type="button" className={added ? 'btn-ghost -ml-4 mt-1 text-sm' : 'btn-secondary mt-3'} disabled={keep.busy} onClick={toggle}>
+        {added ? 'Take my words out' : 'Add my words'}
+      </button>
+      <FieldError id="words-error" message={keep.error?.message} />
+    </section>
   )
 }

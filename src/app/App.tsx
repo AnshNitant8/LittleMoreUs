@@ -27,6 +27,7 @@ import { RouterProvider, useRouter } from './router'
 import { StartGameScreen } from '../screens/moments/GameScreen'
 import { DeleteAccountScreen, RecoverAccountScreen } from '../screens/account/AccountScreens'
 import { UnlockScreen } from '../screens/storybook/UnlockScreen'
+import { BookScreen } from '../screens/storybook/BookScreen'
 import { SERVER_MODE } from '../services/serverMode'
 import { startLiveRefresh } from '../services/remote/client'
 import { finishEmailLink } from '../services/remote/api'
@@ -78,6 +79,7 @@ function SlotView() {
 
   // Storybook full-screen views. Membership and locks are enforced by the service layer.
   if (route.name === 'story' && route.param) return <StoryScreen key={route.param} storyId={route.param} />
+  if (route.name === 'book') return <BookScreen key={route.param ?? 'mine'} isSample={route.param === 'sample'} />
   if (route.name === 'unlock') return <UnlockScreen key={route.param ?? 'unlock'} lockedStory={!!route.param} />
 
   // Full-screen moment flows (no bottom nav: one primary action per screen).

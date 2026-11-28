@@ -86,7 +86,13 @@ export function UnlockScreen({ lockedStory = false }: { lockedStory?: boolean })
         <p>
           A one-time payment of <strong>INR 299</strong> unlocks the full Storybook for both of you while you're paired with the person who paid.
         </p>
-        <p className="text-sm text-ink-soft">Unlocking also lets you export your stories. Deleting stays free, and stories are never deleted because you haven't paid.</p>
+        <ul className="list-disc space-y-1 pl-5 text-sm text-ink-soft">
+          <li>Your Storybook as a keepsake book: chapters by month, every saved story, your small ideas, and your own words if you each choose to add them</li>
+          <li>Every story, however old, open to read</li>
+          <li>Print it or save it as a PDF, export your stories, and delete stories</li>
+        </ul>
+        <p className="text-sm text-ink-soft">Stories are never deleted because you haven't paid.</p>
+        <button type="button" className="btn-ghost -ml-4 text-sm" onClick={() => navigate('book', 'sample')}>See a sample book first →</button>
       </div>
       {body()}
       <button type="button" className="btn-ghost" onClick={() => navigate('storybook')}>Back to Storybook</button>

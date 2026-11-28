@@ -60,7 +60,7 @@ export function AnswerFields({
         </label>
         <textarea
           id={`${id}-answer`}
-          rows={5}
+          rows={6}
           value={text}
           disabled={disabled}
           onChange={(e) => setText(e.target.value)}
@@ -71,8 +71,8 @@ export function AnswerFields({
         />
         <div className="mt-1 flex items-start justify-between gap-3">
           <VoiceButton text={text} setText={setText} disabled={disabled} />
-          <p id={`${id}-count`} aria-live="polite" className={`ml-auto text-right text-sm ${over ? 'font-bold text-coral' : 'text-ink-soft'}`}>
-            {count} / {ANSWER_MAX}
+          <p id={`${id}-count`} aria-live="polite" className="ml-auto text-right text-sm font-bold text-coral">
+            {over ? `That's a lot! Please shorten it a little (${count} / ${ANSWER_MAX}).` : ''}
           </p>
         </div>
       </div>

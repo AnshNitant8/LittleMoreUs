@@ -232,6 +232,10 @@ export interface StoryView {
   saved: boolean
   my_reaction: ReactionValue | null
   can_regenerate: boolean
+  /** My own answer is in our Storybook book. */
+  my_words_added: boolean
+  /** My answer is still kept, so I can add it to the book. */
+  can_add_words: boolean
 }
 
 function storyView(db: Db, s: Story, userId: string): StoryView {
@@ -247,6 +251,8 @@ function storyView(db: Db, s: Story, userId: string): StoryView {
     saved: s.saved,
     my_reaction: db.reactions.find((r) => r.story_id === s.story_id && r.user_id === userId)?.value ?? null,
     can_regenerate: !s.regenerate_used && raw && nowMs() - Date.parse(s.created_at) < REGENERATE_WINDOW_HOURS * DURATION.HOUR,
+    my_words_added: s.keepsake_words?.[userId] !== undefined,
+    can_add_words: db.responses.some((r) => r.interaction_id === s.interaction_id && r.user_id === userId && r.status === 'submitted' && !!r.text_or_choice?.trim()),
   }
 }
 

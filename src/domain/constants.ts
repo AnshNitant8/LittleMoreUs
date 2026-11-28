@@ -73,7 +73,8 @@ export const DEPTH_LABELS: Record<Depth, string> = {
 export const PARENT_LABEL_PRESETS = ['Mumma', 'Papa', 'Mama', 'Ammi', 'Dad', 'Baba'] as const
 export const PARENT_LABEL_MAX = 20
 
-export const ANSWER_MAX = 500
+/** A safety cap only (spoken answers run long); the app shows no counter below it. */
+export const ANSWER_MAX = 5000
 
 export const DEFAULT_FLAGS: FeatureFlags = {
   cap_enabled: false,
