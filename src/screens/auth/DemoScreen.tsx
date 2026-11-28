@@ -3,6 +3,7 @@ import { useRouter } from '../../app/router'
 import { FieldError, OnboardingLayout } from '../../components/Onboarding'
 import { useAction } from '../../hooks/useAction'
 import { demoSignIn } from '../../services/remote/api'
+import { trackEvent } from '../../services/productAnalytics'
 
 /** Sign in to one of the two ready-made demo accounts with the demo passcode. */
 export function DemoScreen() {
@@ -13,7 +14,8 @@ export function DemoScreen() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    await go.run()
+    const r = await go.run()
+    if (r?.ok) trackEvent('demo_sign_in')
   }
 
   return (

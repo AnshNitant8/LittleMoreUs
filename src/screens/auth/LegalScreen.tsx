@@ -13,11 +13,11 @@ const COPY = {
   privacy: {
     title: 'Privacy notice (prototype)',
     body: [
-      'You each answer privately. Your partner never sees your raw answer, only the shared story made after you both agree.',
-      'Raw answers are deleted 24 hours after a story is made, or straight away if a moment is declined, expires or is withdrawn.',
+      'You each answer privately. Your partner only sees the shared story made after you both agree, unless you choose “Add my words” to keep your answer in your Storybook book.',
+      'Raw answers are deleted 24 hours after a story is made, or straight away if a moment is declined, expires or is withdrawn. Words you add to your Storybook stay until you take them out or delete your account.',
       'Notifications never contain question or answer text.',
       'We don’t ask for your baby’s name, date of birth or photo.',
-      'In this prototype, data is stored only in this browser. It is not a secure multi-user system.',
+      'We collect anonymous usage analytics (which screens and buttons are used) to improve the app. They never include your answers, stories, name or email.',
     ],
   },
 }

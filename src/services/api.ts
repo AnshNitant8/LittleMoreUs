@@ -8,11 +8,13 @@ export * from './api.local'
 import * as local from './api.local'
 import { overrides, viaServer } from './remote/api'
 import { SERVER_MODE } from './serverMode'
+import { withEvent } from './productAnalytics'
 
 type Api = typeof local
 function pick<K extends keyof Api>(name: K): Api[K] {
-  if (!SERVER_MODE) return local[name]
-  return (overrides[name] as Api[K] | undefined) ?? viaServer(name)
+  const fn = !SERVER_MODE ? local[name] : ((overrides[name] as Api[K] | undefined) ?? viaServer(name))
+  // Successful calls become anonymous product events (no text), when PostHog is set up.
+  return withEvent(name, fn as never) as Api[K]
 }
 
 export const acceptInvitation = pick('acceptInvitation')

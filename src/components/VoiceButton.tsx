@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { trackEvent } from '../services/productAnalytics'
 
 // Voice typing with the browser's own speech-to-text (no app AI, no key).
 // Words land in the answer box, where they can be edited before sending.
@@ -69,6 +70,7 @@ export function VoiceButton({ text, setText, disabled }: { text: string; setText
     try {
       r.start()
       setListening(true)
+      trackEvent('voice_typing_used')
     } catch {
       setError("Voice typing couldn't start. You can type instead.")
     }

@@ -31,6 +31,7 @@ import { BookScreen } from '../screens/storybook/BookScreen'
 import { SERVER_MODE } from '../services/serverMode'
 import { startLiveRefresh } from '../services/remote/client'
 import { finishEmailLink } from '../services/remote/api'
+import { identifyUser, trackScreen } from '../services/productAnalytics'
 
 function Shell() {
   const { state } = useService(getPrototypeState)
@@ -55,6 +56,11 @@ function Shell() {
 function SlotView() {
   const { route } = useRouter()
   const { state, reload } = useService(getSession)
+  const signedInId = state.status === 'ready' ? (state.data.user?.user_id ?? null) : undefined
+  useEffect(() => {
+    if (signedInId !== undefined) identifyUser(signedInId)
+  }, [signedInId])
+  useEffect(() => trackScreen(route.name), [route.name])
 
   if (route.name === 'legal') return <LegalScreen page={route.param === 'privacy' ? 'privacy' : 'terms'} />
   if (state.status === 'loading') return <div className="px-4"><LoadingState /></div>

@@ -4,6 +4,8 @@ import { SAMPLE_BOOK } from '../../data/sampleBook'
 import { CATEGORIES } from '../../domain/constants'
 import { useService } from '../../hooks/useService'
 import { getBook, type BookEntry, type BookView } from '../../services/api'
+import { trackEvent } from '../../services/productAnalytics'
+import { useEffect } from 'react'
 
 const SERIF = { fontFamily: "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif" }
 const sample = () => Promise.resolve({ ok: true as const, data: SAMPLE_BOOK })
@@ -12,13 +14,14 @@ const sample = () => Promise.resolve({ ok: true as const, data: SAMPLE_BOOK })
 export function BookScreen({ isSample }: { isSample: boolean }) {
   const { navigate } = useRouter()
   const { state, reload } = useService(isSample ? sample : getBook)
+  useEffect(() => trackEvent(isSample ? 'sample_book_opened' : 'book_opened'), [isSample])
 
   return (
     <main aria-labelledby="book-title" className="min-h-dvh px-4 pb-16 pt-4 print:px-0">
       <div className="mb-4 flex items-center justify-between print:hidden">
         <button type="button" className="btn-ghost -ml-3" onClick={() => navigate('storybook')}>← Storybook</button>
         {state.status === 'ready' && state.data.stats.stories > 0 && (
-          <button type="button" className="btn-ghost -mr-3 text-sm" onClick={() => window.print()}>Print or save as PDF</button>
+          <button type="button" className="btn-ghost -mr-3 text-sm" onClick={() => { trackEvent('book_printed', { source: book_kind(state) }); window.print() }}>Print or save as PDF</button>
         )}
       </div>
       {state.status === 'loading' && <LoadingState label="Opening your book" />}
@@ -169,6 +172,10 @@ function Stat({ n, label }: { n: number; label: string }) {
       </dd>
     </div>
   )
+}
+
+function book_kind(s: { status: string; data?: BookView }): string {
+  return s.status === 'ready' && s.data?.sample ? 'sample' : 'mine'
 }
 
 function toRoman(n: number): string {

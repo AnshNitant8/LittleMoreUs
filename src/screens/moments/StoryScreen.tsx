@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { trackEvent } from '../../services/productAnalytics'
 import { useRouter } from '../../app/router'
 import { FieldError } from '../../components/Onboarding'
 import { ErrorState, LoadingState } from '../../components/ui'
@@ -41,6 +42,10 @@ function ReportedScreen() {
 }
 
 function StoryBody({ story, onReported }: { story: StoryView; onReported: () => void }) {
+  useEffect(() => {
+    trackEvent('story_viewed', { category: story.category })
+    if (story.suggestion) trackEvent('small_idea_seen', { category: story.category })
+  }, [story.story_id, story.category, story.suggestion])
   const { navigate } = useRouter()
   const c = CATEGORIES[story.category]
   const save = useAction('save-story', (key) => saveStory({ story_id: story.story_id, idempotencyKey: key }))
