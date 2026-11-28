@@ -61,7 +61,7 @@ function StoryBody({ story, onReported }: { story: StoryView; onReported: () => 
           </div>
         ) : (
           <figure className="rounded-[var(--radius-card)] p-6" style={{ background: c.accent }}>
-            <blockquote className="text-xl leading-loose">{story.text}</blockquote>
+            <blockquote className="text-lg leading-relaxed sm:text-xl sm:leading-loose">{story.text}</blockquote>
           </figure>
         )}
         <p className="text-sm text-ink-soft">Imaginative writing, not your child's actual words.</p>
@@ -150,7 +150,7 @@ function StoryBody({ story, onReported }: { story: StoryView; onReported: () => 
         )}
         <FieldError id="story-error" message={(save.error ?? react.error)?.message} />
       </div>
-      <div className="sticky bottom-0 -mx-4 space-y-2 bg-cream/95 px-4 pb-6 pt-3 backdrop-blur">
+      <div className="space-y-2 pb-6 pt-1">
         {story.saved ? (
           <p role="status" className="text-center font-bold text-ink">Saved to your Storybook</p>
         ) : (
