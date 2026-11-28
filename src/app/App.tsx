@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { BottomNav } from '../components/BottomNav'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { PrototypeControls } from '../components/PrototypeControls'
@@ -164,6 +165,7 @@ export default function App() {
   return (
     <RouterProvider>
       <Shell />
+      <Analytics />
     </RouterProvider>
   )
 }
