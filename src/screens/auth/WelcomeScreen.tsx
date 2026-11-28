@@ -1,8 +1,15 @@
 import { useRouter } from '../../app/router'
 import { HeroFamilies } from '../../components/Illustrations'
+import { useService } from '../../hooks/useService'
+import { getServerInfo } from '../../services/remote/info'
+import { SERVER_MODE } from '../../services/serverMode'
+
+const noInfo = () => Promise.resolve({ ok: false as const, error: { code: 404 as const, message: '' } })
 
 export function WelcomeScreen() {
   const { navigate } = useRouter()
+  const info = useService(SERVER_MODE ? getServerInfo : noInfo).state
+  const demoOn = info.status === 'ready' && info.data.demo === true
   return (
     <main aria-labelledby="screen-title" className="flex min-h-dvh flex-col px-4 pt-16">
       <div className="flex items-center gap-2" aria-hidden="true">
@@ -28,6 +35,11 @@ export function WelcomeScreen() {
         <button type="button" className="btn-secondary" onClick={() => navigate('signin')}>
           I already have an account
         </button>
+        {demoOn && (
+          <button type="button" className="btn-ghost w-full text-sm" onClick={() => navigate('demo')}>
+            Demo sign-in
+          </button>
+        )}
       </div>
     </main>
   )

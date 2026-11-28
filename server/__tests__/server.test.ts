@@ -89,6 +89,23 @@ describe('sign-in on the server', () => {
   })
 })
 
+describe('demo accounts', () => {
+  it('needs the passcode, then opens two ready, paired partners', async () => {
+    const demo = { passcode: 'secret-demo', ensureAuthUser: async (e: string) => `auth-${e}`, openSession: async (e: string) => ({ access_token: e, refresh_token: 'r' }) }
+    const run = (arg: unknown) => handleRpc({ fn: 'demoSignIn', args: [arg] }, null, { gateway, adminEmails: [], demo }).then((o) => o.result)
+    const bad = await run({ who: 'a', passcode: 'nope' })
+    expect(!bad.ok && bad.error.code).toBe(403)
+    expect(await run({ who: 'a', passcode: 'secret-demo' })).toMatchObject({ ok: true, data: { access_token: 'demo.partner.a@example.com' } })
+    expect((await run({ who: 'b', passcode: 'secret-demo' })).ok).toBe(true)
+    const a = phone('demo.partner.a@example.com')
+    const s = await a.call<{ onboarding_step: string; couple: { partner: { display_name: string } } }>('getSession')
+    expect(s.onboarding_step).toBe('done')
+    expect(s.couple.partner.display_name).toBe('Arjun')
+    const off = await handleRpc({ fn: 'demoSignIn', args: [{ who: 'a', passcode: 'x' }] }, null, { gateway, adminEmails: [] })
+    expect(off.result.ok).toBe(false)
+  })
+})
+
 describe('two partners on two phones', () => {
   it('invite, accept, answer privately, and both see one Gemini story', async () => {
     const a = phone('priya@x.com')

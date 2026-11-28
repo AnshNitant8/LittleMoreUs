@@ -23,6 +23,12 @@ const handler = createHandler({
   adminEmails: (process.env.ADMIN_EMAILS ?? 'admin@example.com').split(',').map((s) => s.trim().toLowerCase()),
   geminiKey: process.env.GEMINI_API_KEY,
   cronSecret: 'dev-cron',
+  // Demo accounts locally: passcode "demo123".
+  demo: {
+    passcode: process.env.DEMO_PASSCODE ?? 'demo123',
+    ensureAuthUser: async (email) => `dev-${email}`,
+    openSession: async (email) => ({ access_token: `dev:${email}`, refresh_token: 'dev' }),
+  },
 })
 
 const port = Number(process.env.PORT ?? 8787)

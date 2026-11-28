@@ -48,6 +48,11 @@ function devAuth(): SupabaseClient {
         localStorage.setItem(KEY, email)
         return { data: {}, error: null }
       },
+      async setSession({ access_token }: { access_token: string }) {
+        if (!access_token.startsWith('dev:')) return { data: {}, error: { message: 'bad token' } }
+        localStorage.setItem(KEY, access_token.slice(4))
+        return { data: {}, error: null }
+      },
       async signOut() {
         localStorage.removeItem(KEY)
         return { error: null }

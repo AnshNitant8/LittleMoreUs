@@ -11,6 +11,7 @@ import { readDb, setStoreContextResolver, transact, type Db, type StoreContext }
 import { setAiClientResolver, type AiClient } from '../src/services/gemini'
 import { ConflictError, type Gateway } from './gateway'
 import { buildDb, diffDb } from './scope'
+import { demoSignIn, type DemoDeps } from './demo'
 
 export interface Caller {
   auth_id: string
@@ -36,6 +37,8 @@ export interface RpcDeps {
   adminEmails: string[]
   /** Only for the dry run: an AI client for this call instead of the shared one. */
   ai?: AiClient
+  /** Demo accounts, when DEMO_PASSCODE is set. */
+  demo?: DemoDeps
 }
 
 interface Ctx extends StoreContext {
@@ -84,6 +87,7 @@ const ACCESS = new Map<string, Access>([
   ['markNotificationsRead', 'user'],
   ['lookupAccount', 'public'],
   ['getServerInfo', 'public'],
+  ['demoSignIn', 'public'],
   ['completeSignIn', 'signed-in'],
 ])
 
@@ -108,13 +112,17 @@ export async function handleRpc(req: RpcRequest, caller: Caller | null, deps: Rp
   if (access === 'admin' && !isAdmin) return fail(403, 'This is only for the app admin.')
 
   if (fn === 'getServerInfo') {
-    return { result: { ok: true, data: { mode: 'server', is_admin: isAdmin, email: caller?.email ?? null } }, client: { pending_invite: req.client?.pending_invite ?? null } }
+    return { result: { ok: true, data: { mode: 'server', is_admin: isAdmin, email: caller?.email ?? null, demo: !!deps.demo } }, client: { pending_invite: req.client?.pending_invite ?? null } }
   }
   if (fn === 'lookupAccount') {
     const id = normaliseIdentifier(String(args[0] ?? ''))
     if (!id) return fail(400, 'Please enter a valid email address.')
     if (id.kind !== 'email') return fail(400, "Please use your email address. Signing in with a phone number isn't available yet.")
     return { result: { ok: true, data: { exists: await deps.gateway.accountExists(id.value), identifier: id.value } }, client: { pending_invite: req.client?.pending_invite ?? null } }
+  }
+
+  if (fn === 'demoSignIn') {
+    return { result: await demoSignIn(args[0], deps), client: { pending_invite: null } }
   }
 
   const pendingInvite = typeof req.client?.pending_invite === 'string' ? req.client.pending_invite : null

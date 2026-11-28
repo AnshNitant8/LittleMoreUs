@@ -3,6 +3,8 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { supabaseAdmin, supabaseGateway } from './gateway-supabase'
+import { createClient } from '@supabase/supabase-js'
+import type { DemoDeps } from './demo'
 import { createHandler } from './http'
 
 const env = process.env
@@ -20,6 +22,27 @@ const handler = missing.length
     }
   : (() => {
       const sb = supabaseAdmin(url!, serviceKey!)
+      const demoPass = env.DEMO_PASSCODE?.trim()
+      const demo: DemoDeps | undefined =
+        demoPass && demoPass.length >= 6
+          ? {
+              passcode: demoPass,
+              async ensureAuthUser(email) {
+                await sb.auth.admin.createUser({ email, email_confirm: true, user_metadata: { is_18_confirmed: true } }).catch(() => undefined)
+                const link = await sb.auth.admin.generateLink({ type: 'magiclink', email })
+                if (link.error || !link.data.user) throw new Error(`demo user: ${link.error?.message ?? 'missing'}`)
+                return link.data.user.id
+              },
+              async openSession(email) {
+                const link = await sb.auth.admin.generateLink({ type: 'magiclink', email })
+                if (link.error || !link.data.properties?.hashed_token) throw new Error(`generateLink: ${link.error?.message ?? 'no token'}`)
+                const fresh = createClient(url!, serviceKey!, { auth: { persistSession: false, autoRefreshToken: false } })
+                const v = await fresh.auth.verifyOtp({ token_hash: link.data.properties.hashed_token, type: 'magiclink' })
+                if (v.error || !v.data.session) throw new Error(`verifyOtp: ${v.error?.message ?? 'no session'}`)
+                return { access_token: v.data.session.access_token, refresh_token: v.data.session.refresh_token }
+              },
+            }
+          : undefined
       return createHandler({
         gateway: supabaseGateway(sb),
         async verify(token) {
@@ -31,6 +54,7 @@ const handler = missing.length
         // The older VITE_ name still works; in server mode it never reaches the browser.
         geminiKey: env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY,
         cronSecret: env.CRON_SECRET,
+        demo,
         selftestToken: env.SELFTEST_TOKEN && env.SELFTEST_TOKEN.length >= 16 ? env.SELFTEST_TOKEN : undefined,
       })
     })()

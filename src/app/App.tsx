@@ -19,6 +19,7 @@ import { LegalScreen } from '../screens/auth/LegalScreen'
 import { OtpScreen } from '../screens/auth/OtpScreen'
 import { SignInScreen } from '../screens/auth/SignInScreen'
 import { WelcomeScreen } from '../screens/auth/WelcomeScreen'
+import { DemoScreen } from '../screens/auth/DemoScreen'
 import { OnboardingFlow } from '../screens/onboarding/OnboardingFlow'
 import { AcceptInviteScreen } from '../screens/pairing/AcceptInviteScreen'
 import { InvitePartnerScreen } from '../screens/pairing/InvitePartnerScreen'
@@ -66,6 +67,7 @@ function SlotView() {
   if (!user) {
     if (route.name === 'signin') return <SignInScreen />
     if (route.name === 'otp') return <OtpScreen />
+    if (route.name === 'demo' && SERVER_MODE) return <DemoScreen />
     return <WelcomeScreen />
   }
   if (onboarding_step && onboarding_step !== 'done') return (

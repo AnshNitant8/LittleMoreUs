@@ -5,6 +5,8 @@ export interface ServerInfo {
   mode: 'server'
   is_admin: boolean
   email: string | null
+  /** Demo accounts are switched on. */
+  demo?: boolean
 }
 
 /** Who is signed in on the live app, and whether they are the admin. */

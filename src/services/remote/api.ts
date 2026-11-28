@@ -170,6 +170,21 @@ export function waitForEmailLink(): () => void {
   }
 }
 
+/** Signs in to one of the two demo accounts with the demo passcode. */
+export async function demoSignIn(who: 'a' | 'b', passcode: string): Promise<Result<User>> {
+  const r = await rpc<{ access_token: string; refresh_token: string }>('demoSignIn', [{ who, passcode }])
+  if (!r.ok) return r
+  const sb = await supabase()
+  const { error } = await sb.auth.setSession(r.data)
+  if (error) return { ok: false, error: { code: 400, message: "We couldn't open the demo account. Please try again." } }
+  const res = await rpc<User>('completeSignIn', [{ is_18_confirmed: true }])
+  if (res.ok) {
+    updateDevice({ code: null })
+    emitChange()
+  }
+  return res
+}
+
 /** The functions that work differently in server mode. */
 export const overrides: Partial<{ [K in keyof Api]: Api[K] }> = {
   requestOtp,
